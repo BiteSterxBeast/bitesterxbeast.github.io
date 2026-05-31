@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Studio Analytics Predictor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Roboto, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f9f9f9;
+            color: #030303;
+        }
+
+        /* --- Header --- */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 56px;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 100;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .logo-area span {
+            color: #ff0000;
+            font-size: 22px;
+        }
+
+        .studio-badge {
+            background-color: #ff4e00;
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: -8px;
+            font-weight: 500;
+        }
+
+        .user-options {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #ff4e00;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* --- Layout --- */
+        .container {
+            display: flex;
+            padding-top: 56px;
+        }
+
+        /* Sidebar */
+        sidebar {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            width: 240px;
+            height: calc(100vh - 56px);
+            background-color: #ffffff;
+            padding: 12px;
+            border-right: 1px solid #e5e5e5;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #030303;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .sidebar-link.active {
+            background-color: #f9f9f9;
+            color: #ff4e00;
+            font-weight: 500;
+        }
+
+        /* Main Dashboard Content */
+        main {
+            margin-left: 240px;
+            flex: 1;
+            padding: 32px;
+            max-width: 1100px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 24px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            sidebar { display: none; }
+            main { margin-left: 0; }
+        }
+
+        /* Card Panels */
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .card h2 {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            color: #0f0f0f;
+        }
+
+        /* Form Inputs */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            color: #606060;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .input-group input:focus {
+            border-color: #0556bf;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .row .input-group {
+            flex: 1;
+        }
+
+        button.btn-calculate {
+            width: 100%;
+            background-color: #065fd4;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        button.btn-calculate:hover {
+            background-color: #0556bf;
+        }
+
+        /* Results Display */
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f2f2f2;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #606060;
+            font-size: 14px;
+        }
+
+        .result-value {
+            font-weight: 600;
+            font-size: 16px;
+            color: #0f0f0f;
+        }
+
+        .projection-header {
+            background-color: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 16px;
+            font-weight: 500;
+            color: #065fd4;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <div>☰</div>
+            <div><span>▶</span> Studio</div>
+            <div class="studio-badge">Predictor</div>
+        </div>
+        <div class="user-options">
+            <div>🔔</div>
+            <div class="avatar">S</div>
+        </div>
+    </header>
+
+    <div class="container">
+        <sidebar>
+            <a href="#" class="sidebar-link active">📊 Analytics Calculator</a>
+            <a href="#" class="sidebar-link">⚙️ Coming Soon...</a>
+        </sidebar>
+
+        <main>
+            <h1 class="page-title">Video Performance Forecasting</h1>
+            
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h2>Current Video Stats</h2>
+                    
+                    <div class="input-group">
+                        <label for="currentViews">Current Views</label>
+                        <input type="number" id="currentViews" value="10000" placeholder="e.g., 10000">
+                    </div>
+
+                    <div class="row">
+                        <div class="input-group">
+                            <label for="currentLikes">Current Likes</label>
+                            <input type="number" id="currentLikes" value="100" placeholder="e.g., 100">
+                        </div>
+                        <div class="input-group">
+                            <label for="currentDislikes">Current Dislikes</label>
+                            <input type="number" id="currentDislikes" value="5" placeholder="e.g., 5">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="currentAge">Time Since Upload (In Hours)</label>
+                        <input type="number" id="currentAge" value="24" placeholder="e.g., 24">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="targetAge">Predict Timeline Goal (In Hours)</label>
+                        <input type="number" id="targetAge" value="34" placeholder="e.g., Want to see stats at 34 hours">
+                    </div>
+
+                    <button class="btn-calculate" onclick="calculateProjections()">Run Analytics Forecast</button>
+                </div>
+
+                <div class="card">
+                    <h2>Future Projections</h2>
+                    
+                    <div class="projection-header" id="projectionTitle">
+                        Targeting +10 Hours into the future
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Estimated Future Views</div>
+                        <div class="result-value" id="futureViews">--</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Estimated Total Likes</div>
+                        <div class="result-value" id="futureLikes">--</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Estimated Total Dislikes</div>
+                        <div class="result-value" id="futureDislikes">--</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Like-to-Dislike Ratio</div>
+                        <div class="result-value" id="futureRatio" style="color: #2ed573;">--</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function calculateProjections() {
+            // Get data from inputs
+            const currentViews = parseFloat(document.getElementById('currentViews').value) || 0;
+            const currentLikes = parseFloat(document.getElementById('currentLikes').value) || 0;
+            const currentDislikes = parseFloat(document.getElementById('currentDislikes').value) || 0;
+            const currentAge = parseFloat(document.getElementById('currentAge').value) || 1;
+            const targetAge = parseFloat(document.getElementById('targetAge').value) || 0;
+
+            if (targetAge <= currentAge) {
+                alert("Please make sure your prediction target time is greater than your current video age time.");
+                return;
+            }
+
+            // 1. Calculate operational rates per hour
+            const viewVelocity = currentViews / currentAge;
+            const likeVelocity = currentLikes / currentAge;
+            const dislikeVelocity = currentDislikes / currentAge;
+
+            // 2. Find time difference
+            const hoursDifference = targetAge - currentAge;
+            document.getElementById('projectionTitle').innerText = `Targeting +${hoursDifference.toFixed(1)} hours into the future (Total: ${targetAge}h)`;
+
+            // 3. Project totals
+            const projectedViews = Math.round(currentViews + (viewVelocity * hoursDifference));
+            const projectedLikes = Math.round(currentLikes + (likeVelocity * hoursDifference));
+            const projectedDislikes = Math.round(currentDislikes + (dislikeVelocity * hoursDifference));
+
+            // 4. Calculate Ratio percentages
+            const totalInteractions = projectedLikes + projectedDislikes;
+            let ratioPercentage = "100%";
+            if (totalInteractions > 0) {
+                ratioPercentage = ((projectedLikes / totalInteractions) * 100).toFixed(1) + "%";
+            }
+
+            // Update UI fields
+            document.getElementById('futureViews').innerText = projectedViews.toLocaleString();
+            document.getElementById('futureLikes').innerText = projectedLikes.toLocaleString();
+            document.getElementById('futureDislikes').innerText = projectedDislikes.toLocaleString();
+            document.getElementById('futureRatio').innerText = `${ratioPercentage} Likes`;
+        }
+
+        // Run default initialization once on layout render
+        window.onload = calculateProjections;
+    </script>
+</body>
+</html>
