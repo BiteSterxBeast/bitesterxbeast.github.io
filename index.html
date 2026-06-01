@@ -3,18 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Studio Analytics Predictor</title>
+    <title>YouTube Studio - Creator Tools Suite</title>
     <style>
+        /* --- Color CSS Variables --- */
+        :root {
+            --bg-color: #f9f9f9;
+            --card-bg: #ffffff;
+            --text-main: #030303;
+            --text-sub: #606060;
+            --border-color: #e5e5e5;
+            --input-border: #ccc;
+            --header-bg: #ffffff;
+            --hover-bg: #f2f2f2;
+            --accent-blue: #065fd4;
+            --accent-hover: #0556bf;
+            --shorts-red: #ff0000;
+            --green-accent: #2ed573;
+            --gold-accent: #ffa500;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f0f0f;
+            --card-bg: #1f1f1f;
+            --text-main: #f1f1f1;
+            --text-sub: #aaa;
+            --border-color: #3f3f3f;
+            --input-border: #4f4f4f;
+            --header-bg: #212121;
+            --hover-bg: #383838;
+            --accent-blue: #3ea6ff;
+            --accent-hover: #65b8ff;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: Roboto, Arial, sans-serif;
+            transition: background-color 0.25s, border-color 0.25s, color 0.25s;
         }
 
         body {
-            background-color: #f9f9f9;
-            color: #030303;
+            background-color: var(--bg-color);
+            color: var(--text-main);
         }
 
         /* --- Header --- */
@@ -24,13 +55,14 @@
             left: 0;
             width: 100%;
             height: 56px;
-            background-color: #ffffff;
+            background-color: var(--header-bg);
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 0 16px;
             z-index: 100;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .logo-area {
@@ -39,7 +71,6 @@
             gap: 16px;
             font-weight: bold;
             font-size: 18px;
-            cursor: pointer;
         }
 
         .logo-area span {
@@ -57,22 +88,22 @@
             font-weight: 500;
         }
 
-        .user-options {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .avatar {
-            width: 32px;
-            height: 32px;
+        .theme-toggle-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
             border-radius: 50%;
-            background-color: #ff4e00;
-            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
+            width: 40px;
+            height: 40px;
+        }
+
+        .theme-toggle-btn:hover {
+            background-color: var(--hover-bg);
         }
 
         /* --- Layout --- */
@@ -81,16 +112,15 @@
             padding-top: 56px;
         }
 
-        /* Sidebar */
         sidebar {
             position: fixed;
             top: 56px;
             left: 0;
-            width: 240px;
+            width: 250px;
             height: calc(100vh - 56px);
-            background-color: #ffffff;
+            background-color: var(--header-bg);
             padding: 12px;
-            border-right: 1px solid #e5e5e5;
+            border-right: 1px solid var(--border-color);
         }
 
         .sidebar-link {
@@ -99,23 +129,33 @@
             padding: 12px;
             border-radius: 10px;
             text-decoration: none;
-            color: #030303;
+            color: var(--text-main);
             margin-bottom: 4px;
             font-size: 14px;
+            cursor: pointer;
+            gap: 10px;
+        }
+
+        .sidebar-link:hover {
+            background-color: var(--hover-bg);
         }
 
         .sidebar-link.active {
-            background-color: #f9f9f9;
+            background-color: var(--bg-color);
             color: #ff4e00;
             font-weight: 500;
         }
 
-        /* Main Dashboard Content */
+        .sidebar-link.disabled {
+            color: var(--text-sub);
+            opacity: 0.7;
+        }
+
         main {
-            margin-left: 240px;
+            margin-left: 250px;
             flex: 1;
             padding: 32px;
-            max-width: 1100px;
+            max-width: 1200px;
         }
 
         .page-title {
@@ -130,30 +170,30 @@
             gap: 24px;
         }
 
-        @media (max-width: 900px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 950px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
             sidebar { display: none; }
             main { margin-left: 0; }
         }
 
         /* Card Panels */
         .card {
-            background-color: #ffffff;
-            border: 1px solid #e5e5e5;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 24px;
+            margin-bottom: 24px;
+            position: relative;
         }
 
         .card h2 {
             font-size: 18px;
             font-weight: 500;
             margin-bottom: 20px;
-            color: #0f0f0f;
+            color: var(--text-main);
         }
 
-        /* Form Inputs */
+        /* Form Controls */
         .input-group {
             margin-bottom: 16px;
         }
@@ -161,82 +201,96 @@
         .input-group label {
             display: block;
             font-size: 13px;
-            color: #606060;
+            color: var(--text-sub);
             margin-bottom: 6px;
             font-weight: 500;
         }
 
-        .input-group input {
+        .input-group input, .input-group select {
             width: 100%;
             padding: 10px 14px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
             font-size: 15px;
             outline: none;
+            background-color: var(--card-bg);
+            color: var(--text-main);
         }
 
-        .input-group input:focus {
-            border-color: #0556bf;
+        .input-group input:focus, .input-group select:focus {
+            border-color: var(--accent-blue);
         }
 
-        .row {
+        .quick-presets {
             display: flex;
-            gap: 12px;
+            gap: 8px;
+            margin-top: 6px;
         }
 
-        .row .input-group {
-            flex: 1;
-        }
-
-        button.btn-calculate {
-            width: 100%;
-            background-color: #065fd4;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 500;
+        .preset-btn {
+            background-color: var(--hover-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 4px;
             cursor: pointer;
-            margin-top: 10px;
-            transition: background 0.2s;
         }
 
-        button.btn-calculate:hover {
-            background-color: #0556bf;
+        .preset-btn:hover {
+            opacity: 0.8;
         }
 
-        /* Results Display */
+        .row { display: flex; gap: 12px; }
+        .row .input-group { flex: 1; }
+
+        /* Results Elements */
         .result-item {
             display: flex;
             justify-content: space-between;
             padding: 12px 0;
-            border-bottom: 1px solid #f2f2f2;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .result-item:last-child {
-            border-bottom: none;
+        .result-item:last-child { border-bottom: none; }
+        .result-label { color: var(--text-sub); font-size: 14px; }
+        .result-value { font-weight: 600; font-size: 16px; color: var(--text-main); }
+
+        .metric-badge {
+            font-size: 11px;
+            background-color: var(--hover-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--text-sub);
         }
 
-        .result-label {
-            color: #606060;
-            font-size: 14px;
-        }
-
-        .result-value {
-            font-weight: 600;
-            font-size: 16px;
-            color: #0f0f0f;
-        }
-
-        .projection-header {
-            background-color: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
+        /* --- Locked Page Overlay --- */
+        .locked-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             text-align: center;
+            padding: 60px 20px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            min-height: 400px;
+        }
+
+        .lock-icon {
+            font-size: 48px;
             margin-bottom: 16px;
-            font-weight: 500;
-            color: #065fd4;
+        }
+
+        .lock-badge {
+            background-color: var(--gold-accent);
+            color: black;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 12px;
         }
     </style>
 </head>
@@ -246,131 +300,226 @@
         <div class="logo-area">
             <div>☰</div>
             <div><span>▶</span> Studio</div>
-            <div class="studio-badge">Predictor</div>
+            <div class="studio-badge">Creator Hub</div>
         </div>
-        <div class="user-options">
-            <div>🔔</div>
-            <div class="avatar">S</div>
+        <div>
+            <button class="theme-toggle-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
         </div>
     </header>
 
     <div class="container">
         <sidebar>
-            <a href="#" class="sidebar-link active">📊 Analytics Calculator</a>
-            <a href="#" class="sidebar-link">⚙️ Coming Soon...</a>
+            <div class="sidebar-link active" id="navRpm" onclick="switchTab('rpm')">💸 RPM Calculator</div>
+            <div class="sidebar-link disabled" id="navPredictor" onclick="switchTab('predictor')">📊 Analytic Predictor - Coming Soon</div>
         </sidebar>
 
         <main>
-            <h1 class="page-title">Video Performance Forecasting</h1>
             
-            <div class="dashboard-grid">
-                <div class="card">
-                    <h2>Current Video Stats</h2>
-                    
-                    <div class="input-group">
-                        <label for="currentViews">Current Views</label>
-                        <input type="number" id="currentViews" value="10000" placeholder="e.g., 10000">
-                    </div>
-
-                    <div class="row">
+            <div id="screenRpm">
+                <h1 class="page-title">Channel Revenue & RPM Calculator</h1>
+                
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h2>Revenue Configuration</h2>
+                        
                         <div class="input-group">
-                            <label for="currentLikes">Current Likes</label>
-                            <input type="number" id="currentLikes" value="100" placeholder="e.g., 100">
+                            <label for="contentType">Content Optimization Format</label>
+                            <select id="contentType" onchange="applyTrainedRPM()">
+                                <option value="longform">📺 Long-form Videos</option>
+                                <option value="shorts">🩳 Shorts Feed Rotation</option>
+                            </select>
                         </div>
+
                         <div class="input-group">
-                            <label for="currentDislikes">Current Dislikes</label>
-                            <input type="number" id="currentDislikes" value="5" placeholder="e.g., 5">
+                            <label for="calcViews">Target View Count</label>
+                            <input type="number" id="calcViews" value="100000" oninput="calculateRPMValues()">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="calcRpm">Base AdSense RPM ($)</label>
+                            <input type="number" id="calcRpm" value="0.7908" step="0.0001" oninput="calculateRPMValues()">
+                            <div class="quick-presets">
+                                <span style="font-size: 11px; color: var(--text-sub); display: flex; align-items: center;">Channel Presets:</span>
+                                <button class="preset-btn" onclick="setPresetRPM(0.7908)">Long-form ($0.79)</button>
+                                <button class="preset-btn" onclick="setPresetRPM(0.1462)">Shorts ($0.15)</button>
+                            </div>
+                        </div>
+
+                        <hr style="border:0; border-top:1px solid var(--border-color); margin: 20px 0;">
+                        <h2>External Revenue Overlays</h2>
+                        <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 14px;">Incorporate alternative metrics to evaluate your True Channel Value.</p>
+
+                        <div class="row">
+                            <div class="input-group">
+                                <label for="brandDeals">Sponsorships / Brand Deals ($)</label>
+                                <input type="number" id="brandDeals" value="0" oninput="calculateRPMValues()">
+                            </div>
+                            <div class="input-group">
+                                <label for="otherRev">Merch & Memberships ($)</label>
+                                <input type="number" id="otherRev" value="0" oninput="calculateRPMValues()">
+                            </div>
                         </div>
                     </div>
 
-                    <div class="input-group">
-                        <label for="currentAge">Time Since Upload (In Hours)</label>
-                        <input type="number" id="currentAge" value="24" placeholder="e.g., 24">
-                    </div>
+                    <div>
+                        <div class="card">
+                            <h2>Earnings Projection</h2>
+                            
+                            <div class="result-item">
+                                <div class="result-label">AdSense Net Income</div>
+                                <div class="result-value" id="outAdsense" style="color: var(--text-main);">$--</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">External Revenue Streams</div>
+                                <div class="result-value" id="outExternal">$--</div>
+                            </div>
+                            <div class="result-item" style="border-top: 2px solid var(--border-color); padding-top: 16px;">
+                                <div class="result-label" style="font-weight: 500;">Total Projected Payoff</div>
+                                <div class="result-value" id="outTotal" style="color: var(--green-accent); font-size: 20px;">$--</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">True Integrated RPM <span class="metric-badge">All Streams</span></div>
+                                <div class="result-value" id="outTrueRpm" style="color: var(--accent-blue);">$--</div>
+                            </div>
+                        </div>
 
-                    <div class="input-group">
-                        <label for="targetAge">Predict Timeline Goal (In Hours)</label>
-                        <input type="number" id="targetAge" value="34" placeholder="e.g., Want to see stats at 34 hours">
-                    </div>
-
-                    <button class="btn-calculate" onclick="calculateProjections()">Run Analytics Forecast</button>
-                </div>
-
-                <div class="card">
-                    <h2>Future Projections</h2>
-                    
-                    <div class="projection-header" id="projectionTitle">
-                        Targeting +10 Hours into the future
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Estimated Future Views</div>
-                        <div class="result-value" id="futureViews">--</div>
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Estimated Total Likes</div>
-                        <div class="result-value" id="futureLikes">--</div>
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Estimated Total Dislikes</div>
-                        <div class="result-value" id="futureDislikes">--</div>
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Like-to-Dislike Ratio</div>
-                        <div class="result-value" id="futureRatio" style="color: #2ed573;">--</div>
+                        <div class="card">
+                            <h2>Algorithmic Milestone Requirements</h2>
+                            <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 12px;">Views required to clear targets under this performance structure:</p>
+                            
+                            <div class="result-item">
+                                <div class="result-label">To Earn $100</div>
+                                <div class="result-value" id="goal100">-- views</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">To Earn $500</div>
+                                <div class="result-value" id="goal500">-- views</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">To Earn $1,000</div>
+                                <div class="result-value" id="goal1000">-- views</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <div id="screenPredictor" style="display: none;">
+                <h1 class="page-title">Advanced Performance Forecaster</h1>
+                
+                <div class="locked-screen">
+                    <div class="lock-badge">STABLE BETA DEVELOPMENT</div>
+                    <div class="lock-icon">🔒</div>
+                    <h2>Predictor Module Locked</h2>
+                    <p style="color: var(--text-sub); max-width: 460px; margin-top: 8px; font-size: 14px; line-height: 20px;">
+                        The Analytics Timeline Forecaster is being recalibrated to run multi-wave matrix projections based on your updated channel history logs. Check back soon for the synchronized update.
+                    </p>
+                </div>
+            </div>
+
         </main>
     </div>
 
     <script>
-        function calculateProjections() {
-            // Get data from inputs
-            const currentViews = parseFloat(document.getElementById('currentViews').value) || 0;
-            const currentLikes = parseFloat(document.getElementById('currentLikes').value) || 0;
-            const currentDislikes = parseFloat(document.getElementById('currentDislikes').value) || 0;
-            const currentAge = parseFloat(document.getElementById('currentAge').value) || 1;
-            const targetAge = parseFloat(document.getElementById('targetAge').value) || 0;
+        // --- Light / Dark Mode Toggle ---
+        function toggleTheme() {
+            const body = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                btn.innerText = '🌙';
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                btn.innerText = '☀️';
+            }
+        }
 
-            if (targetAge <= currentAge) {
-                alert("Please make sure your prediction target time is greater than your current video age time.");
+        // --- Single Page Navigation Routing ---
+        function switchTab(target) {
+            const rpmTab = document.getElementById('screenRpm');
+            const predTab = document.getElementById('screenPredictor');
+            const navRpm = document.getElementById('navRpm');
+            const navPred = document.getElementById('navPredictor');
+
+            if(target === 'rpm') {
+                rpmTab.style.display = 'block';
+                predTab.style.display = 'none';
+                navRpm.classList.add('active');
+                navPred.classList.remove('active');
+            } else {
+                rpmTab.style.display = 'none';
+                predTab.style.display = 'block';
+                navRpm.classList.remove('active');
+                navPred.classList.add('active');
+            }
+        }
+
+        // --- Auto-fill Coefficients Trained on Channel Files ---
+        function applyTrainedRPM() {
+            const format = document.getElementById('contentType').value;
+            const rpmInput = document.getElementById('calcRpm');
+            
+            if(format === 'longform') {
+                rpmInput.value = "0.7908"; // Trained channel index
+            } else {
+                rpmInput.value = "0.1462"; // Trained channel index
+            }
+            calculateRPMValues();
+        }
+
+        function setPresetRPM(val) {
+            document.getElementById('calcRpm').value = val;
+            calculateRPMValues();
+        }
+
+        // --- Core RPM Math Module ---
+        function calculateRPMValues() {
+            const views = parseFloat(document.getElementById('calcViews').value) || 0;
+            const baseRpm = parseFloat(document.getElementById('calcRpm').value) || 0;
+            const brandDeals = parseFloat(document.getElementById('brandDeals').value) || 0;
+            const otherRev = parseFloat(document.getElementById('otherRev').value) || 0;
+
+            // 1. Calculations
+            const adsenseIncome = (views / 1000) * baseRpm;
+            const externalIncome = brandDeals + otherRev;
+            const totalIncome = adsenseIncome + externalIncome;
+
+            let trueRpm = 0;
+            if (views > 0) {
+                trueRpm = (totalIncome / views) * 1000;
+            } else {
+                trueRpm = baseRpm;
+            }
+
+            // 2. Render Panel Core Metrics
+            document.getElementById('outAdsense').innerText = `$${adsenseIncome.toFixed(2)}`;
+            document.getElementById('outExternal').innerText = `$${externalIncome.toFixed(2)}`;
+            document.getElementById('outTotal').innerText = `$${totalIncome.toFixed(2)}`;
+            document.getElementById('outTrueRpm').innerText = `$${trueRpm.toFixed(4)}`;
+
+            // 3. Milestone Goals Scaling System
+            // Base formula: views = (Target Revenue / True Channel RPM) * 1000
+            // If external revenue is locked, scale directly on cumulative RPM vectors
+            let effectiveRpmForMilestones = trueRpm > 0 ? trueRpm : baseRpm;
+            
+            if(effectiveRpmForMilestones <= 0) {
+                document.getElementById('goal100').innerText = "-- views";
+                document.getElementById('goal500').innerText = "-- views";
+                document.getElementById('goal1000').innerText = "-- views";
                 return;
             }
 
-            // 1. Calculate operational rates per hour
-            const viewVelocity = currentViews / currentAge;
-            const likeVelocity = currentLikes / currentAge;
-            const dislikeVelocity = currentDislikes / currentAge;
+            const viewsFor100 = Math.ceil((100 / effectiveRpmForMilestones) * 1000);
+            const viewsFor500 = Math.ceil((500 / effectiveRpmForMilestones) * 1000);
+            const viewsFor1000 = Math.ceil((1000 / effectiveRpmForMilestones) * 1000);
 
-            // 2. Find time difference
-            const hoursDifference = targetAge - currentAge;
-            document.getElementById('projectionTitle').innerText = `Targeting +${hoursDifference.toFixed(1)} hours into the future (Total: ${targetAge}h)`;
-
-            // 3. Project totals
-            const projectedViews = Math.round(currentViews + (viewVelocity * hoursDifference));
-            const projectedLikes = Math.round(currentLikes + (likeVelocity * hoursDifference));
-            const projectedDislikes = Math.round(currentDislikes + (dislikeVelocity * hoursDifference));
-
-            // 4. Calculate Ratio percentages
-            const totalInteractions = projectedLikes + projectedDislikes;
-            let ratioPercentage = "100%";
-            if (totalInteractions > 0) {
-                ratioPercentage = ((projectedLikes / totalInteractions) * 100).toFixed(1) + "%";
-            }
-
-            // Update UI fields
-            document.getElementById('futureViews').innerText = projectedViews.toLocaleString();
-            document.getElementById('futureLikes').innerText = projectedLikes.toLocaleString();
-            document.getElementById('futureDislikes').innerText = projectedDislikes.toLocaleString();
-            document.getElementById('futureRatio').innerText = `${ratioPercentage} Likes`;
+            document.getElementById('goal100').innerText = `${viewsFor100.toLocaleString()} views`;
+            document.getElementById('goal500').innerText = `${viewsFor500.toLocaleString()} views`;
+            document.getElementById('goal1000').innerText = `${viewsFor1000.toLocaleString()} views`;
         }
 
-        // Run default initialization once on layout render
-        window.onload = calculateProjections;
+        // Execute default configuration parsing on load
+        window.onload = calculateRPMValues;
     </script>
 </body>
 </html>
