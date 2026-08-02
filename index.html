@@ -116,6 +116,7 @@
   button.ghost:hover{border-color:var(--text); background:rgba(255,255,255,0.05);}
   button.danger:hover{border-color:var(--live);}
   
+  /* Settings button specific */
   .settings-btn { font-size: 16px; padding: 7px 12px; }
 
   main{max-width:1180px; margin:0 auto; padding:26px 32px;}
@@ -333,7 +334,7 @@
     width: 100%;
     height: 1px;
     border: none;
-    border-bottom: 1px solid #1a1e24;
+    border-bottom: 1px dashed var(--line);
     margin: 0 0 24px 0;
   }
 
@@ -365,6 +366,7 @@
     flex-direction: column;
   }
   
+  /* Toggling arrows logic */
   .comp-vid-header-row {
     display: flex;
     justify-content: space-between;
@@ -915,7 +917,7 @@ let videoHistory = {};
 let oauthToken = null; 
 
 // YOU MUST REPLACE THIS WITH YOUR GOOGLE CLOUD CLIENT ID
-const GOOGLE_CLIENT_ID = 471528825382-9l35diff50u42v82ug1sogmrga7ojicg.apps.googleusercontent.com;
+const GOOGLE_CLIENT_ID = '471528825382-9l35diff50u42v82ug1sogmrga7ojicg.apps.googleusercontent.com';
 
 let currentTab = 'list'; 
 
@@ -1013,7 +1015,7 @@ function initSettingsUI() {
   windowTogglesGrid.innerHTML = '';
   WINDOWS.forEach(w => {
     const lbl = document.createElement('label');
-    const checked = appSettings.windows[w.label] !== false; 
+    const checked = appSettings.windows[w.label] !== false; // default true
     lbl.innerHTML = `<input type="checkbox" class="win-toggle" value="${w.label}" ${checked ? 'checked' : ''}> ${w.label}`;
     windowTogglesGrid.appendChild(lbl);
   });
@@ -1206,6 +1208,7 @@ btnTabList.onclick = () => {
   viewGraph.style.display = 'none';
   viewCompetitors.style.display = 'none';
   addBtn.innerText = '+ Add channel';
+  oauthContainer.style.display = 'block'; 
 };
 
 btnTabGraph.onclick = () => {
@@ -1217,6 +1220,7 @@ btnTabGraph.onclick = () => {
   viewGraph.style.display = 'block';
   viewCompetitors.style.display = 'none';
   addBtn.innerText = '+ Add channel';
+  oauthContainer.style.display = 'block';
   updateChart(); 
 };
 
@@ -1229,6 +1233,7 @@ btnTabCompetitors.onclick = () => {
   viewGraph.style.display = 'none';
   viewCompetitors.style.display = 'block';
   addBtn.innerText = '+ Add competitor';
+  oauthContainer.style.display = 'none'; 
   render(); 
 };
 
@@ -1292,6 +1297,9 @@ logSizeSelect.addEventListener('change', e => {
 // --- Persistent Activity Log & Milestone Logic ---
 function saveLogs() {
   try { localStorage.setItem('channelDeck_logs', JSON.stringify(activityLogs)); } catch(e){}
+}
+function saveVideoHistory() {
+  try { localStorage.setItem('channelDeck_videoHistory', JSON.stringify(videoHistory)); } catch(e){}
 }
 
 function renderLogs() {
@@ -1684,7 +1692,7 @@ function initOAuthClient() {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/youtube.readonly',
-      prompt: '', // Suppresses prompt if already signed in
+      prompt: '', 
       callback: (tokenResponse) => {
         if(tokenResponse && tokenResponse.access_token) {
           oauthToken = tokenResponse.access_token;
@@ -1722,7 +1730,6 @@ async function resolveChannelId(parsed){
     return parsed.value;
   }
   if(parsed.type === 'handle'){
-    // If OAuth is active, try to fetch with it first just in case
     const data = await fetchWithFallback(key => key ? `${base}?part=id&forHandle=${encodeURIComponent(parsed.value.replace(/^@/,''))}&key=${key}` : `${base}?part=id&forHandle=${encodeURIComponent(parsed.value.replace(/^@/,''))}`, !!oauthToken);
     if(data.items && data.items.length) return data.items[0].id;
     return await searchChannel(parsed.value);
@@ -1737,7 +1744,6 @@ async function searchChannel(q){
 }
 
 async function fetchChannelCore(channelId, useOAuth = false){
-  // If useOAuth is true, we ask the API for 'mine=true' to get unrounded counts
   const endpoint = useOAuth && oauthToken 
      ? `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&mine=true`
      : `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id=${channelId}`;
@@ -1745,8 +1751,6 @@ async function fetchChannelCore(channelId, useOAuth = false){
   const data = await fetchWithFallback(key => key ? `${endpoint}&key=${key}` : endpoint, useOAuth);
   
   if(!data.items || !data.items.length) {
-     // If mine=true fails to find it (meaning the linked OAuth account doesn't own this channel), 
-     // fallback to regular public fetch
      if(useOAuth) {
         return await fetchChannelCore(channelId, false);
      }
@@ -1869,12 +1873,11 @@ async function fetchAllDataFor(id, isCompetitor = false){
   render();
   try{
     const ch = isCompetitor ? competitors.find(c => c.id === id) : channels.find(c => c.id === id);
-    const attemptOAuth = !!(ch && ch.hasOAuthToken); // Flag to check if we verified ownership before
+    const attemptOAuth = !!(ch && ch.hasOAuthToken); 
     
     const core = await fetchChannelCore(id, oauthToken ? true : attemptOAuth);
     
     if (oauthToken && !isCompetitor) {
-      // Mark channel as owned so auto-refresh knows it can try OAuth
       if (ch) ch.hasOAuthToken = true; 
     }
     
@@ -2312,7 +2315,7 @@ function render(){
   });
   grid.querySelectorAll('[data-retry]').forEach(btn => {
     btn.onclick = () => {
-      if(!hasApiKey()){ openKeyModal(); return; }
+      if(!hasApiKey() && !oauthToken){ openKeyModal(); return; }
       fetchAllDataFor(btn.dataset.retry);
     };
   });
@@ -2372,7 +2375,7 @@ function render(){
   });
   competitorsGrid.querySelectorAll('[data-retry-comp]').forEach(btn => {
     btn.onclick = () => {
-      if(!hasApiKey()){ openKeyModal(); return; }
+      if(!hasApiKey() && !oauthToken){ openKeyModal(); return; }
       fetchAllDataFor(btn.dataset.retryComp, true);
     };
   });
