@@ -553,23 +553,23 @@
   /* Segmented Color Slider for Refresh Interval */
   input[type=range].color-track::-webkit-slider-runnable-track {
     background: linear-gradient(to right, 
-      #FF0000 0%, #FF0000 25%, 
+      #FF4B3E 0%, #FF4B3E 25%, 
       #FF9800 25%, #FF9800 50%, 
-      #FFFF00 50%, #FFFF00 75%, 
-      #00FF00 75%, #00FF00 100%);
-    border: 1px solid #000;
-    height: 12px;
-    border-radius: 2px;
+      #FCE205 50%, #FCE205 75%, 
+      #2ecc71 75%, #2ecc71 100%);
+    border: none;
+    height: 6px;
+    border-radius: 3px;
   }
   input[type=range].color-track::-webkit-slider-thumb {
-    height: 24px; 
-    width: 24px; 
+    height: 16px; 
+    width: 16px; 
     border-radius: 50%; 
-    background: #0000FF; 
-    border: 2px solid #000;
+    background: var(--teal); 
+    border: none;
     cursor: pointer; 
     -webkit-appearance: none; 
-    margin-top: -7px; 
+    margin-top: -5px; 
     box-shadow: 0 0 6px rgba(0,0,0,0.5);
   }
 
@@ -908,7 +908,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.12</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.121</span>
       <button class="primary" id="settingsClose">Close & Save</button>
     </div>
   </div>
@@ -921,10 +921,20 @@
 
     <div style="margin-bottom: 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.12</h4>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.121</h4>
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 4, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Redesigned the Auto-Refresh interval slider to cleanly match the dark dashboard UI.</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.12</h4>
+        <span style="font-size:11px; color:var(--dim); font-family:'Space Grotesk', monospace;">August 4, 2026</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--dim); font-size:12.5px; line-height:1.7;">
         <li>Added a global Auto-Refresh interval setting with 15s, 30s, 45s, and 1m options to manage API quota.</li>
         <li>Added a colored segmented slider for the refresh interval UI.</li>
       </ul>
