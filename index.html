@@ -451,11 +451,17 @@
   }
 
   /* Graph Controls & Container */
+  .graph-header-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
   .graph-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    width: 100%;
     flex-wrap: wrap;
     gap: 12px;
   }
@@ -772,14 +778,18 @@
 
   <!-- Graph View -->
   <div id="viewGraph" style="display: none;">
-    <div class="graph-header">
-      <div style="display:flex; gap: 16px; align-items: center;">
-         <div id="graphToggles" class="graph-toggles"></div>
+    <div class="graph-header-wrapper">
+      <div class="graph-header">
+        <div id="graphToggles" class="graph-toggles"></div>
+        <div style="display:flex; gap: 8px; align-items: center;">
+           <button class="primary" id="metricSubsBtn">Subscribers</button>
+           <button class="ghost" id="metricViewsBtn">Views</button>
+           <button class="ghost" id="resetZoomBtn" style="font-size: 11px; padding: 6px 12px;">Reset Zoom</button>
+        </div>
       </div>
-      <div style="display:flex; gap: 8px;">
-         <button class="primary" id="metricSubsBtn">Subscribers</button>
-         <button class="ghost" id="metricViewsBtn">Total Views</button>
-         <button class="ghost" id="resetZoomBtn" style="font-size: 11px; padding: 6px 12px;">Reset Zoom</button>
+      <div id="viewsSubToggles" style="display:none; gap: 8px; justify-content: flex-end; width: 100%;">
+         <button class="primary" id="subMetricVphBtn" style="font-size: 11px; padding: 6px 12px;">VPH</button>
+         <button class="ghost" id="subMetricTotalViewsBtn" style="font-size: 11px; padding: 6px 12px;">Total Views</button>
       </div>
     </div>
     <div class="graph-container">
@@ -859,7 +869,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.11</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.112</span>
       <button class="primary" id="settingsClose">Close & Save</button>
     </div>
   </div>
@@ -872,10 +882,22 @@
     
     <div style="margin-bottom: 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.11</h4>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.112</h4>
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 4, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Renamed "Total Views" graph button to "Views".</li>
+        <li>Added VPH vs Total Views sub-toggles to the Graph view.</li>
+        <li>Fixed the bug causing graphs to show empty data for some users.</li>
+      </ul>
+    </div>
+    
+    <div style="margin-bottom: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.11</h4>
+        <span style="font-size:11px; color:var(--dim); font-family:'Space Grotesk', monospace;">Previous</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--dim); font-size:12.5px; line-height:1.7;">
         <li>Reload VPH on best videos on tab list</li>
         <li>Fixed hover issues</li>
         <li>Added more depth to graph</li>
@@ -975,6 +997,7 @@ let videoHistory = {};
 
 let currentTab = 'list'; 
 let currentGraphMetric = 'subs'; // 'subs' or 'views'
+let currentViewsSubMetric = 'vph'; // 'vph' or 'total'
 
 // --- DOM Elements ---
 const grid = document.getElementById('grid');
@@ -1535,17 +1558,36 @@ const palette = ['#34D6C4', '#F2B84B', '#FF4B3E', '#9b59b6', '#3498db', '#e67e22
 
 const metricSubsBtn = document.getElementById('metricSubsBtn');
 const metricViewsBtn = document.getElementById('metricViewsBtn');
+const subMetricVphBtn = document.getElementById('subMetricVphBtn');
+const subMetricTotalViewsBtn = document.getElementById('subMetricTotalViewsBtn');
+const viewsSubToggles = document.getElementById('viewsSubToggles');
 
 metricSubsBtn.onclick = () => {
     currentGraphMetric = 'subs';
     metricSubsBtn.className = 'primary';
     metricViewsBtn.className = 'ghost';
+    viewsSubToggles.style.display = 'none';
     updateChart();
 };
 metricViewsBtn.onclick = () => {
     currentGraphMetric = 'views';
     metricViewsBtn.className = 'primary';
     metricSubsBtn.className = 'ghost';
+    viewsSubToggles.style.display = 'flex';
+    updateChart();
+};
+
+subMetricVphBtn.onclick = () => {
+    currentViewsSubMetric = 'vph';
+    subMetricVphBtn.className = 'primary';
+    subMetricTotalViewsBtn.className = 'ghost';
+    updateChart();
+};
+
+subMetricTotalViewsBtn.onclick = () => {
+    currentViewsSubMetric = 'total';
+    subMetricTotalViewsBtn.className = 'primary';
+    subMetricVphBtn.className = 'ghost';
     updateChart();
 };
 
@@ -1605,26 +1647,51 @@ function recordChartSnapshot() {
         label: cache[ch.id]?.data?.title || ch.addedAs,
         subsData: [],
         viewsData: [],
+        vphData: [],
         color: palette[idx % palette.length]
       };
       while(chartSnapshots.datasets[ch.id].subsData.length < chartSnapshots.labels.length - 1) {
         chartSnapshots.datasets[ch.id].subsData.push(null);
         chartSnapshots.datasets[ch.id].viewsData.push(null);
+        chartSnapshots.datasets[ch.id].vphData.push(null);
       }
     }
 
+    const ds = chartSnapshots.datasets[ch.id];
     const subs = cache[ch.id]?.data?.subs;
     const views = cache[ch.id]?.data?.totalViews;
     
-    chartSnapshots.datasets[ch.id].subsData.push(subs !== undefined ? subs : null);
-    chartSnapshots.datasets[ch.id].viewsData.push(views !== undefined ? views : null);
-    
-    if(chartSnapshots.datasets[ch.id].subsData.length > 50) {
-       chartSnapshots.datasets[ch.id].subsData.shift();
-       chartSnapshots.datasets[ch.id].viewsData.shift();
+    let vph = null;
+    if (views !== undefined && views !== null) {
+        let lastViews = null;
+        let lastTime = null;
+        for(let i = ds.viewsData.length - 1; i >= 0; i--) {
+            if (ds.viewsData[i] !== null) {
+                lastViews = ds.viewsData[i];
+                lastTime = chartSnapshots.timestamps[i];
+                break;
+            }
+        }
+        if (lastViews !== null && lastTime !== null) {
+            let hours = (now - lastTime) / 3600000;
+            if (hours > 0) {
+                vph = (views - lastViews) / hours;
+                vph = Math.max(0, vph);
+            }
+        }
     }
     
-    chartSnapshots.datasets[ch.id].label = cache[ch.id]?.data?.title || ch.addedAs;
+    ds.subsData.push(subs !== undefined ? subs : null);
+    ds.viewsData.push(views !== undefined ? views : null);
+    ds.vphData.push(vph);
+    
+    if(ds.subsData.length > 50) {
+       ds.subsData.shift();
+       ds.viewsData.shift();
+       ds.vphData.shift();
+    }
+    
+    ds.label = cache[ch.id]?.data?.title || ch.addedAs;
   });
 
   saveChartSnapshots();
@@ -1637,11 +1704,17 @@ function updateChart() {
     .map(ch => {
         const ds = chartSnapshots.datasets[ch.id];
         if(!ds) return null;
-        const rgb = hexToRgb(ds.color);
+        const rgb = hexToRgb(ds.color || '#34D6C4');
+        
+        let targetData;
+        if (currentGraphMetric === 'subs') targetData = ds.subsData;
+        else if (currentGraphMetric === 'views' && currentViewsSubMetric === 'total') targetData = ds.viewsData;
+        else targetData = ds.vphData;
+
         return {
            label: ds.label,
-           data: currentGraphMetric === 'subs' ? ds.subsData : ds.viewsData,
-           borderColor: ds.color,
+           data: targetData,
+           borderColor: ds.color || '#34D6C4',
            backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`,
            fill: true,
            tension: 0,
@@ -1751,17 +1824,25 @@ function loadStorage(){
       chartSnapshots.labels = validIndices.map(i => chartSnapshots.labels[i]);
       
       for (let id in chartSnapshots.datasets) {
-         if (chartSnapshots.datasets[id].data) {
-             chartSnapshots.datasets[id].subsData = chartSnapshots.datasets[id].data;
-             chartSnapshots.datasets[id].viewsData = chartSnapshots.datasets[id].data.map(()=>null);
-             chartSnapshots.datasets[id].color = chartSnapshots.datasets[id].borderColor;
-             delete chartSnapshots.datasets[id].data;
-             delete chartSnapshots.datasets[id].borderColor;
-             delete chartSnapshots.datasets[id].backgroundColor;
+         let ds = chartSnapshots.datasets[id];
+         if (ds.data) {
+             ds.subsData = ds.data;
+             ds.viewsData = ds.data.map(()=>null);
+             ds.vphData = ds.data.map(()=>null);
+             ds.color = ds.borderColor || ds.color || palette[0];
+             delete ds.data;
+             delete ds.borderColor;
+             delete ds.backgroundColor;
          }
-         if (chartSnapshots.datasets[id].subsData) {
-             chartSnapshots.datasets[id].subsData = validIndices.map(i => chartSnapshots.datasets[id].subsData[i]);
-             chartSnapshots.datasets[id].viewsData = validIndices.map(i => chartSnapshots.datasets[id].viewsData[i]);
+         if (!ds.subsData) ds.subsData = [];
+         if (!ds.viewsData) ds.viewsData = ds.subsData.map(()=>null);
+         if (!ds.vphData) ds.vphData = ds.subsData.map(()=>null);
+         if (!ds.color) ds.color = palette[0];
+
+         if (ds.subsData) {
+             ds.subsData = validIndices.map(i => ds.subsData[i]);
+             ds.viewsData = validIndices.map(i => ds.viewsData[i]);
+             ds.vphData = validIndices.map(i => ds.vphData[i]);
          }
       }
     }
