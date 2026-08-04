@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Channel Deck</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="favicon.png">
 
 <!-- Load Chart.js and Zoom plugins -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -44,6 +45,11 @@
   }
   body.panel-open {
     margin-right: 320px; 
+  }
+  
+  /* Fix Drag and Drop Flicker */
+  body.is-dragging .card * {
+    pointer-events: none !important;
   }
 
   .num{font-family:'Space Grotesk',monospace;font-variant-numeric:tabular-nums;}
@@ -147,12 +153,18 @@
     padding:20px;
     position:relative;
     cursor: grab;
-    transition: outline 0.15s;
+    transition: outline 0.15s, background 0.15s;
   }
   .card:active {
     cursor: grabbing;
   }
   
+  .card.drag-over {
+    outline: 2px dashed var(--teal) !important;
+    outline-offset: 2px;
+    background: rgba(52, 214, 196, 0.05);
+  }
+
   .card.selected-for-panel {
     outline: 2px solid var(--teal);
   }
@@ -479,10 +491,8 @@
   .modal h3{margin:0 0 6px; font-family:'Space Grotesk',sans-serif; font-size:16px;}
   .modal p{color:var(--muted); font-size:12.5px; line-height:1.5; margin:0 0 16px;}
   .modal label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px;}
-  .modal input[type="text"], .modal input[type="range"]{
-    width:100%; margin-bottom:16px;
-  }
   .modal input[type="text"] {
+    width:100%; margin-bottom:16px;
     padding:10px 12px; border-radius:7px; border:1px solid var(--line);
     background:var(--panel-2); color:var(--text); font-size:13px; 
     font-family:'Inter',sans-serif;
@@ -507,6 +517,21 @@
   
   .slider-row {
     display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+  }
+  
+  /* Custom Range Slider */
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+  }
+  input[type=range]:focus { outline: none; }
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%; height: 6px; cursor: pointer; background: var(--line); border-radius: 3px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    height: 16px; width: 16px; border-radius: 50%; background: var(--teal); cursor: pointer; 
+    -webkit-appearance: none; margin-top: -5px; box-shadow: 0 0 6px rgba(0,0,0,0.5);
   }
 
   .footnote{
@@ -745,8 +770,14 @@
   <!-- Graph View -->
   <div id="viewGraph" style="display: none;">
     <div class="graph-header">
-      <div id="graphToggles" class="graph-toggles"></div>
-      <button class="ghost" id="resetZoomBtn" style="font-size: 11px; padding: 6px 12px;">Reset Zoom</button>
+      <div style="display:flex; gap: 16px; align-items: center;">
+         <div id="graphToggles" class="graph-toggles"></div>
+      </div>
+      <div style="display:flex; gap: 8px;">
+         <button class="primary" id="metricSubsBtn">Subscribers</button>
+         <button class="ghost" id="metricViewsBtn">Total Views</button>
+         <button class="ghost" id="resetZoomBtn" style="font-size: 11px; padding: 6px 12px;">Reset Zoom</button>
+      </div>
     </div>
     <div class="graph-container">
       <canvas id="subChart"></canvas>
@@ -811,7 +842,10 @@
         <label for="volSlider" style="margin:0; width: 60px;">Volume</label>
         <input type="range" id="volSlider" min="0" max="100" value="100" style="flex:1; margin:0;">
       </div>
-      <button id="muteBtn" class="ghost" style="width:100%;">Mute SFX: OFF</button>
+      <div style="display:flex; gap: 8px;">
+        <button id="muteBtn" class="ghost" style="flex:1;">Mute SFX: OFF</button>
+        <button id="testAudioBtn" class="ghost" style="flex:1;">Test Audio</button>
+      </div>
     </div>
 
     <div class="settings-group">
@@ -898,6 +932,7 @@ let activityLogs = [];
 let videoHistory = {}; 
 
 let currentTab = 'list'; 
+let currentGraphMetric = 'subs'; // 'subs' or 'views'
 
 // --- DOM Elements ---
 const grid = document.getElementById('grid');
@@ -922,6 +957,7 @@ const addOverlayTitle = document.getElementById('addOverlayTitle');
 const settingsOverlay = document.getElementById('settingsOverlay');
 const volSlider = document.getElementById('volSlider');
 const muteBtn = document.getElementById('muteBtn');
+const testAudioBtn = document.getElementById('testAudioBtn');
 const windowTogglesGrid = document.getElementById('windowTogglesGrid');
 
 footnote.innerHTML = `Video-window figures show videos <b style="color:var(--muted)">published</b> in that trailing window, and the total lifetime view count those specific videos have accumulated so far — not view growth per day. The YouTube Data API doesn't expose day-by-day view deltas without OAuth access to each channel's own YouTube Analytics, so this is the closest live read possible from public data.`;
@@ -951,6 +987,15 @@ function fmtVph(n){
   if(n >= 1e6) return (n/1e6).toFixed(2).replace(/\.00$/,'') + 'M/hr';
   if(n >= 1e3) return (n/1e3).toFixed(2).replace(/\.00$/,'') + 'K/hr';
   return r + '/hr';
+}
+
+function hexToRgb(hex) {
+  let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : {r:52, g:214, b:196};
 }
 
 // --- Audio Logic ---
@@ -1018,6 +1063,10 @@ muteBtn.onclick = () => {
   appSettings.muted = !appSettings.muted;
   muteBtn.innerText = `Mute SFX: ${appSettings.muted ? 'ON' : 'OFF'}`;
   muteBtn.className = appSettings.muted ? 'primary' : 'ghost';
+};
+
+testAudioBtn.onclick = () => {
+  playSound('milestoneSound');
 };
 
 
@@ -1374,6 +1423,7 @@ function handleDragStart(e) {
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', this.dataset.index);
   this.style.opacity = '0.4';
+  document.body.classList.add('is-dragging');
 }
 
 function handleDragOver(e) {
@@ -1383,18 +1433,16 @@ function handleDragOver(e) {
 }
 
 function handleDragEnter(e) {
-  this.style.outline = '2px dashed var(--teal)';
-  this.style.outlineOffset = '2px';
-  this.style.borderRadius = '12px';
+  this.classList.add('drag-over');
 }
 
 function handleDragLeave(e) {
-  this.style.outline = 'none';
+  this.classList.remove('drag-over');
 }
 
 function handleDrop(e) {
   if (e.stopPropagation) e.stopPropagation();
-  this.style.outline = 'none';
+  this.classList.remove('drag-over');
   dragSrcEl.style.opacity = '1';
 
   if (dragSrcEl !== this) {
@@ -1420,13 +1468,33 @@ function handleDrop(e) {
 
 function handleDragEnd(e) {
   this.style.opacity = '1';
-  document.querySelectorAll('.card').forEach(c => c.style.outline = 'none');
+  document.body.classList.remove('is-dragging');
+  document.querySelectorAll('.card').forEach(c => {
+      c.classList.remove('drag-over');
+      c.style.outline = 'none';
+  });
 }
 
 // --- Chart.js Graph Logic ---
 let subChart;
 const chartCtx = document.getElementById('subChart').getContext('2d');
 const palette = ['#34D6C4', '#F2B84B', '#FF4B3E', '#9b59b6', '#3498db', '#e67e22', '#2ecc71', '#e74c3c'];
+
+const metricSubsBtn = document.getElementById('metricSubsBtn');
+const metricViewsBtn = document.getElementById('metricViewsBtn');
+
+metricSubsBtn.onclick = () => {
+    currentGraphMetric = 'subs';
+    metricSubsBtn.className = 'primary';
+    metricViewsBtn.className = 'ghost';
+    updateChart();
+};
+metricViewsBtn.onclick = () => {
+    currentGraphMetric = 'views';
+    metricViewsBtn.className = 'primary';
+    metricSubsBtn.className = 'ghost';
+    updateChart();
+};
 
 let chartSnapshots = {
   labels: [],
@@ -1482,23 +1550,25 @@ function recordChartSnapshot() {
     if (!chartSnapshots.datasets[ch.id]) {
       chartSnapshots.datasets[ch.id] = {
         label: cache[ch.id]?.data?.title || ch.addedAs,
-        data: [],
-        borderColor: palette[idx % palette.length],
-        backgroundColor: palette[idx % palette.length],
-        tension: 0.3,
-        borderWidth: 2,
-        pointRadius: 3
+        subsData: [],
+        viewsData: [],
+        color: palette[idx % palette.length]
       };
-      while(chartSnapshots.datasets[ch.id].data.length < chartSnapshots.labels.length - 1) {
-        chartSnapshots.datasets[ch.id].data.push(null);
+      while(chartSnapshots.datasets[ch.id].subsData.length < chartSnapshots.labels.length - 1) {
+        chartSnapshots.datasets[ch.id].subsData.push(null);
+        chartSnapshots.datasets[ch.id].viewsData.push(null);
       }
     }
 
     const subs = cache[ch.id]?.data?.subs;
-    chartSnapshots.datasets[ch.id].data.push(subs !== undefined ? subs : null);
+    const views = cache[ch.id]?.data?.totalViews;
     
-    if(chartSnapshots.datasets[ch.id].data.length > 50) {
-       chartSnapshots.datasets[ch.id].data.shift();
+    chartSnapshots.datasets[ch.id].subsData.push(subs !== undefined ? subs : null);
+    chartSnapshots.datasets[ch.id].viewsData.push(views !== undefined ? views : null);
+    
+    if(chartSnapshots.datasets[ch.id].subsData.length > 50) {
+       chartSnapshots.datasets[ch.id].subsData.shift();
+       chartSnapshots.datasets[ch.id].viewsData.shift();
     }
     
     chartSnapshots.datasets[ch.id].label = cache[ch.id]?.data?.title || ch.addedAs;
@@ -1511,8 +1581,23 @@ function recordChartSnapshot() {
 function updateChart() {
   const activeDatasets = channels
     .filter(ch => ch.showOnGraph !== false)
-    .map(ch => chartSnapshots.datasets[ch.id])
-    .filter(Boolean); 
+    .map(ch => {
+        const ds = chartSnapshots.datasets[ch.id];
+        if(!ds) return null;
+        const rgb = hexToRgb(ds.color);
+        return {
+           label: ds.label,
+           data: currentGraphMetric === 'subs' ? ds.subsData : ds.viewsData,
+           borderColor: ds.color,
+           backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`,
+           fill: true,
+           tension: 0,
+           borderWidth: 2,
+           pointRadius: 0,
+           pointHoverRadius: 5,
+           pointHitRadius: 15
+        };
+    }).filter(Boolean);
 
   if (!subChart) {
     subChart = new Chart(chartCtx, {
@@ -1534,12 +1619,12 @@ function updateChart() {
           zoom: {
             pan: {
               enabled: true,
-              mode: 'xy'
+              mode: 'x'
             },
             zoom: {
               wheel: { enabled: true },
               pinch: { enabled: true },
-              mode: 'xy'
+              mode: 'x'
             }
           }
         }
@@ -1611,8 +1696,20 @@ function loadStorage(){
       
       chartSnapshots.timestamps = validIndices.map(i => chartSnapshots.timestamps[i]);
       chartSnapshots.labels = validIndices.map(i => chartSnapshots.labels[i]);
+      
       for (let id in chartSnapshots.datasets) {
-         chartSnapshots.datasets[id].data = validIndices.map(i => chartSnapshots.datasets[id].data[i]);
+         if (chartSnapshots.datasets[id].data) {
+             chartSnapshots.datasets[id].subsData = chartSnapshots.datasets[id].data;
+             chartSnapshots.datasets[id].viewsData = chartSnapshots.datasets[id].data.map(()=>null);
+             chartSnapshots.datasets[id].color = chartSnapshots.datasets[id].borderColor;
+             delete chartSnapshots.datasets[id].data;
+             delete chartSnapshots.datasets[id].borderColor;
+             delete chartSnapshots.datasets[id].backgroundColor;
+         }
+         if (chartSnapshots.datasets[id].subsData) {
+             chartSnapshots.datasets[id].subsData = validIndices.map(i => chartSnapshots.datasets[id].subsData[i]);
+             chartSnapshots.datasets[id].viewsData = validIndices.map(i => chartSnapshots.datasets[id].viewsData[i]);
+         }
       }
     }
   } catch(e){}
@@ -1644,6 +1741,9 @@ function saveApiKeys(){
 }
 function saveSettings(){
   try{ localStorage.setItem('channelDeck_settings', JSON.stringify(appSettings)); }catch(e){}
+}
+function saveVideoHistory() {
+  try { localStorage.setItem('channelDeck_videoHistory', JSON.stringify(videoHistory)); } catch(e){}
 }
 
 function extractHandleOrId(raw){
@@ -2359,6 +2459,29 @@ async function refreshLiveStatsOnly(id){
     const core = await fetchChannelCore(id);
     const prev = cache[id] && cache[id].data ? cache[id].data : {};
     
+    // Auto-refresh the video stats as well to keep the Best Video tab accurate
+    const uploadsId = core.contentDetails.relatedPlaylists.uploads;
+    const videos = await fetchUploadsWithinDays(uploadsId, 365);
+    const viewStats = await fetchVideoStats(videos.map(v=>v.id));
+    const windows = computeWindows(videos, viewStats);
+    const bestVideo = findBestRecentVideo(videos, viewStats, 7);
+    
+    let newestVideo = null;
+    if(videos.length > 0) {
+       const nv = videos[0];
+       const nvStats = viewStats[nv.id];
+       if(nvStats) {
+         newestVideo = {
+           id: nv.id, 
+           title: nvStats.title, 
+           views: nvStats.views, 
+           vph: nvStats.vph,
+           thumb: nvStats.thumb, 
+           publishedAt: nvStats.publishedAt
+         };
+       }
+    }
+
     const newSubs = core.statistics.hiddenSubscriberCount ? null : Number(core.statistics.subscriberCount);
     
     checkSubChanges(id, core.snippet.title, prev.subs, newSubs);
@@ -2372,9 +2495,9 @@ async function refreshLiveStatsOnly(id){
         subs: newSubs,
         totalViews: Number(core.statistics.viewCount || 0),
         totalVideos: Number(core.statistics.videoCount || 0),
-        windows: prev.windows || [],
-        bestVideo: prev.bestVideo || null,
-        newestVideo: prev.newestVideo || null,
+        windows: windows,
+        bestVideo: bestVideo,
+        newestVideo: newestVideo,
         syncedAt: Date.now(),
         syncError: false 
       }
