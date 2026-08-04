@@ -535,7 +535,7 @@
     display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
   }
   
-  /* Custom Range Slider */
+  /* Custom Range Slider (Volume) */
   input[type=range] {
     -webkit-appearance: none;
     width: 100%;
@@ -548,6 +548,29 @@
   input[type=range]::-webkit-slider-thumb {
     height: 16px; width: 16px; border-radius: 50%; background: var(--teal); cursor: pointer; 
     -webkit-appearance: none; margin-top: -5px; box-shadow: 0 0 6px rgba(0,0,0,0.5);
+  }
+  
+  /* Segmented Color Slider for Refresh Interval */
+  input[type=range].color-track::-webkit-slider-runnable-track {
+    background: linear-gradient(to right, 
+      #FF0000 0%, #FF0000 25%, 
+      #FF9800 25%, #FF9800 50%, 
+      #FFFF00 50%, #FFFF00 75%, 
+      #00FF00 75%, #00FF00 100%);
+    border: 1px solid #000;
+    height: 12px;
+    border-radius: 2px;
+  }
+  input[type=range].color-track::-webkit-slider-thumb {
+    height: 24px; 
+    width: 24px; 
+    border-radius: 50%; 
+    background: #0000FF; 
+    border: 2px solid #000;
+    cursor: pointer; 
+    -webkit-appearance: none; 
+    margin-top: -7px; 
+    box-shadow: 0 0 6px rgba(0,0,0,0.5);
   }
 
   .footnote{
@@ -858,6 +881,14 @@
     <h3>Settings</h3>
     
     <div class="settings-group">
+      <h4>Auto-Refresh Interval</h4>
+      <div style="margin-bottom: 12px; font-size: 12px; font-family: 'Inter', sans-serif; color: var(--text);" id="refreshIntervalLabel">
+        15s - Rapid (Not Recommended With 4+ Channels)
+      </div>
+      <input type="range" id="refreshIntervalSlider" class="color-track" min="0" max="3" step="1" value="0">
+    </div>
+    
+    <div class="settings-group">
       <h4>Audio Settings</h4>
       <div class="slider-row">
         <label for="volSlider" style="margin:0; width: 60px;">Volume</label>
@@ -877,7 +908,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.113</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.12</span>
       <button class="primary" id="settingsClose">Close & Save</button>
     </div>
   </div>
@@ -890,10 +921,21 @@
 
     <div style="margin-bottom: 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.113</h4>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.12</h4>
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 4, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Added a global Auto-Refresh interval setting with 15s, 30s, 45s, and 1m options to manage API quota.</li>
+        <li>Added a colored segmented slider for the refresh interval UI.</li>
+      </ul>
+    </div>
+    
+    <div style="margin-bottom: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.113</h4>
+        <span style="font-size:11px; color:var(--dim); font-family:'Space Grotesk', monospace;">August 4, 2026</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--dim); font-size:12.5px; line-height:1.7;">
         <li>Updated the API Keys menu to support up to 7 dynamic keys.</li>
         <li>Added the ability to custom name/rename API keys.</li>
       </ul>
@@ -995,8 +1037,16 @@
 let appSettings = {
   volume: 100,
   muted: false,
-  windows: { '1d': true, '7d': true, '28d': true, '90d': true, '365d': true }
+  windows: { '1d': true, '7d': true, '28d': true, '90d': true, '365d': true },
+  refreshIntervalIndex: 0
 };
+
+const REFRESH_OPTIONS = [
+  { ms: 15000, text: '15s', label: '15s - Rapid (Not Recommended With 4+ Channels)' },
+  { ms: 30000, text: '30s', label: '30s - Intermediate' },
+  { ms: 45000, text: '45s', label: '45s - Decent' },
+  { ms: 60000, text: '1m', label: '1m - Basic' }
+];
 
 const WINDOWS = [
   {label:'1d', days:1},
@@ -1049,6 +1099,8 @@ const volSlider = document.getElementById('volSlider');
 const muteBtn = document.getElementById('muteBtn');
 const testAudioBtn = document.getElementById('testAudioBtn');
 const windowTogglesGrid = document.getElementById('windowTogglesGrid');
+const refreshIntervalSlider = document.getElementById('refreshIntervalSlider');
+const refreshIntervalLabel = document.getElementById('refreshIntervalLabel');
 
 const changelogOverlay = document.getElementById('changelogOverlay');
 
@@ -1123,10 +1175,18 @@ function playSound(id) {
 }
 
 // --- Settings Modals ---
+refreshIntervalSlider.addEventListener('input', (e) => {
+   refreshIntervalLabel.innerText = REFRESH_OPTIONS[e.target.value].label;
+});
+
 function initSettingsUI() {
   volSlider.value = appSettings.volume;
   muteBtn.innerText = `Mute SFX: ${appSettings.muted ? 'ON' : 'OFF'}`;
   muteBtn.className = appSettings.muted ? 'primary' : 'ghost';
+  
+  if(appSettings.refreshIntervalIndex === undefined) appSettings.refreshIntervalIndex = 0;
+  refreshIntervalSlider.value = appSettings.refreshIntervalIndex;
+  refreshIntervalLabel.innerText = REFRESH_OPTIONS[appSettings.refreshIntervalIndex].label;
   
   windowTogglesGrid.innerHTML = '';
   WINDOWS.forEach(w => {
@@ -1145,6 +1205,9 @@ document.getElementById('settingsBtn').onclick = () => {
 document.getElementById('settingsClose').onclick = () => {
   appSettings.volume = parseInt(volSlider.value, 10);
   
+  const oldIndex = appSettings.refreshIntervalIndex;
+  appSettings.refreshIntervalIndex = parseInt(refreshIntervalSlider.value, 10);
+  
   document.querySelectorAll('.win-toggle').forEach(cb => {
     appSettings.windows[cb.value] = cb.checked;
   });
@@ -1152,6 +1215,11 @@ document.getElementById('settingsClose').onclick = () => {
   saveSettings();
   settingsOverlay.style.display = 'none';
   render(); 
+  
+  // Restart auto-refresh timers if the interval changed
+  if (oldIndex !== appSettings.refreshIntervalIndex) {
+     channels.filter(c => c.autoRefresh).forEach(c => startAutoRefresh(c.id));
+  }
 };
 
 muteBtn.onclick = () => {
@@ -1798,7 +1866,7 @@ function loadStorage(){
   try {
     const s = localStorage.getItem('channelDeck_settings');
     if (s) {
-      appSettings = JSON.parse(s);
+      appSettings = Object.assign({ refreshIntervalIndex: 0 }, JSON.parse(s));
       if(!appSettings.windows) appSettings.windows = { '1d': true, '7d': true, '28d': true, '90d': true, '365d': true };
     }
   } catch(e){}
@@ -2242,6 +2310,8 @@ function render(){
       `;
     }
 
+    const currentIntervalText = REFRESH_OPTIONS[appSettings.refreshIntervalIndex || 0].text;
+
     card.innerHTML = `
       <div class="card-top">
         <img class="avatar" src="${d && d.thumb ? d.thumb : ''}" alt="">
@@ -2284,7 +2354,7 @@ function render(){
         <button class="refresh-icon-btn" data-retry="${ch.id}" title="Refresh this channel">⟳ refresh</button>
       </div>
       <div class="autorefresh-row">
-        <span>Auto-refresh subs every 15s</span>
+        <span>Auto-refresh subs every ${currentIntervalText}</span>
         <label class="switch">
           <input type="checkbox" data-autorefresh="${ch.id}" ${ch.autoRefresh ? 'checked' : ''}>
           <span class="track"></span>
@@ -2619,7 +2689,8 @@ function render(){
 const autoRefreshTimers = {};
 function startAutoRefresh(id){
   stopAutoRefresh(id);
-  autoRefreshTimers[id] = setInterval(() => refreshLiveStatsOnly(id), 15000);
+  const intervalMs = REFRESH_OPTIONS[appSettings.refreshIntervalIndex || 0].ms;
+  autoRefreshTimers[id] = setInterval(() => refreshLiveStatsOnly(id), intervalMs);
 }
 function stopAutoRefresh(id){
   if(autoRefreshTimers[id]){ clearInterval(autoRefreshTimers[id]); delete autoRefreshTimers[id]; }
