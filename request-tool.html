@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Request a Tool — BiteSterxBeast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="favicon.png">
+<meta name="theme-color" content="#34D6C4">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0B0D10;
+    --panel:#14171C;
+    --panel-2:#1B1F26;
+    --line:#262B33;
+    --text:#E8EAED;
+    --muted:#8A93A1;
+    --dim:#5A626F;
+    --teal:#34D6C4;
+    --amber:#F2B84B;
+    --live:#FF4B3E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at 20% -10%, #1a1d24 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  a{ color:inherit; }
+
+  header{
+    padding:24px 32px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+  .live-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 0 0 rgba(52,214,196,0.6);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(52,214,196,0.55);}
+    70%{box-shadow:0 0 0 9px rgba(52,214,196,0);}
+    100%{box-shadow:0 0 0 0 rgba(52,214,196,0);}
+  }
+  @media (prefers-reduced-motion: reduce){ .live-dot{ animation:none; } }
+  header h1{
+    font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:600; margin:0;
+    letter-spacing:0.02em; color:var(--text);
+  }
+  .nav-links{ display:flex; gap:22px; font-size:13px; font-weight:600; }
+  .nav-links a{ text-decoration:none; color:var(--muted); transition:color .15s; }
+  .nav-links a:hover{ color:var(--teal); }
+
+  main{ max-width:640px; margin:0 auto; padding:56px 32px 100px; }
+
+  .page-head{ margin-bottom:32px; }
+  .eyebrow{
+    display:inline-block; font-size:11px; font-weight:600; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--teal); background:rgba(52,214,196,0.08);
+    border:1px solid rgba(52,214,196,0.25); padding:6px 12px; border-radius:20px;
+    margin-bottom:16px;
+  }
+  .page-head h2{
+    font-family:'Space Grotesk',sans-serif; font-size:30px; font-weight:700; margin:0 0 10px;
+  }
+  .page-head p{ color:var(--muted); font-size:14.5px; line-height:1.6; margin:0; max-width:520px; }
+
+  form{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:28px; display:flex; flex-direction:column; gap:22px;
+  }
+
+  .field{ display:flex; flex-direction:column; gap:8px; }
+  .field label{
+    font-size:13px; font-weight:600; color:var(--text);
+  }
+  .field label .optional{ color:var(--dim); font-weight:500; font-size:11.5px; }
+  .field label .required{ color:var(--live); }
+  .field .hint{ font-size:12px; color:var(--muted); margin-top:-4px; }
+
+  input[type="text"], input[type="email"], textarea{
+    width:100%; padding:11px 13px; border-radius:7px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text); font-size:13.5px;
+    font-family:'Inter',sans-serif;
+  }
+  input[type="text"]:focus, input[type="email"]:focus, textarea:focus{
+    outline:2px solid var(--teal); outline-offset:1px;
+  }
+  textarea{ resize:vertical; min-height:90px; line-height:1.5; }
+
+  .check-grid, .radio-grid{
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .check-row, .radio-row{
+    display:flex; align-items:center; gap:10px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+    padding:11px 13px; cursor:pointer; transition:border-color .15s;
+  }
+  .check-row:hover, .radio-row:hover{ border-color:var(--teal); }
+  .check-row input, .radio-row input{ accent-color:var(--teal); width:16px; height:16px; cursor:pointer; }
+  .check-row span, .radio-row span{ font-size:13.5px; color:var(--text); }
+
+  .error-text{ font-size:12px; color:var(--live); display:none; }
+  .field.has-error input, .field.has-error textarea{ border-color:var(--live); }
+  .field.has-error .error-text{ display:block; }
+
+  button[type="submit"]{
+    font-family:'Inter',sans-serif; font-size:14px; font-weight:600;
+    border-radius:7px; border:1px solid var(--teal); background:var(--teal);
+    color:#04211D; padding:13px 20px; cursor:pointer; transition:background .15s;
+  }
+  button[type="submit"]:hover{ background:#4be2d1; }
+  button[type="submit"]:disabled{ opacity:0.6; cursor:default; }
+
+  .form-footnote{ font-size:11.5px; color:var(--dim); line-height:1.5; margin-top:-4px; }
+
+  /* Success state */
+  .success-box{
+    display:none;
+    background:var(--panel); border:1px solid rgba(52,214,196,0.35); border-radius:14px;
+    padding:40px 28px; text-align:center;
+  }
+  .success-box .icon{ font-size:34px; margin-bottom:14px; }
+  .success-box h3{
+    font-family:'Space Grotesk',sans-serif; font-size:19px; margin:0 0 8px; color:var(--text);
+  }
+  .success-box p{ color:var(--muted); font-size:13.5px; margin:0 0 20px; line-height:1.6; }
+  .success-box a{
+    display:inline-block; font-size:13px; font-weight:600; text-decoration:none;
+    color:var(--teal); border:1px solid var(--line); border-radius:7px; padding:10px 18px;
+    transition:border-color .15s;
+  }
+  .success-box a:hover{ border-color:var(--teal); }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="index.html">
+    <span class="live-dot"></span>
+    <h1>BITESTERXBEAST</h1>
+  </a>
+  <div class="nav-links">
+    <a href="channeldeck/home/">Channel Deck</a>
+    <a href="index.html#projects">Projects</a>
+  </div>
+</header>
+
+<main>
+  <div class="page-head">
+    <span class="eyebrow">Feedback</span>
+    <h2>Request a Tool Form</h2>
+    <p>Have a great idea for a new creator tool? I am always looking for new projects to build after Channel Deck and Mash Uploads. Share your ideas here!</p>
+  </div>
+
+  <form id="requestForm">
+    <div class="field" id="field-name">
+      <label for="f-name">Your name <span class="optional">(Username is optional)</span> <span class="required" id="name-req">*</span></label>
+      <input type="text" id="f-name" name="name" placeholder="e.g. Alex">
+      <span class="error-text">This field is required.</span>
+    </div>
+
+    <div class="field" id="field-idea">
+      <label for="f-idea">What is your tool name or idea?</label>
+      <input type="text" id="f-idea" name="idea" placeholder="e.g. Thumbnail A/B Tester">
+      <span class="error-text">This field is required.</span>
+    </div>
+
+    <div class="field" id="field-problem">
+      <label for="f-problem">What problem would this tool solve?</label>
+      <textarea id="f-problem" name="problem" placeholder="What's frustrating or missing right now?"></textarea>
+      <span class="error-text">This field is required.</span>
+    </div>
+
+    <div class="field">
+      <label>Which platform is this for?</label>
+      <div class="check-grid">
+        <label class="check-row"><input type="checkbox" name="platform" value="YouTube"><span>YouTube</span></label>
+        <label class="check-row"><input type="checkbox" name="platform" value="TikTok"><span>TikTok</span></label>
+        <label class="check-row"><input type="checkbox" name="platform" value="Instagram"><span>Instagram</span></label>
+        <label class="check-row"><input type="checkbox" name="platform" value="Other"><span>Other</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>How much would you want this tool?</label>
+      <div class="radio-grid">
+        <label class="radio-row"><input type="radio" name="want" value="Nice to have"><span>Nice to have</span></label>
+        <label class="radio-row"><input type="radio" name="want" value="Would use often"><span>Would use often</span></label>
+        <label class="radio-row"><input type="radio" name="want" value="Desperately need this"><span>Desperately need this</span></label>
+      </div>
+    </div>
+
+    <button type="submit" id="submitBtn">Submit Request</button>
+    <span class="form-footnote">Submissions go straight into a Google Form I check regularly — no account or sign-in needed on your end.</span>
+  </form>
+
+  <div class="success-box" id="successBox">
+    <div class="icon">✅</div>
+    <h3>Got it — thanks!</h3>
+    <p>Your request has been submitted. I read every one of these when I'm deciding what to build next.</p>
+    <a href="index.html">Back to home</a>
+  </div>
+</main>
+
+<!-- Hidden iframe used as the submit target so the page never navigates away -->
+<iframe name="hiddenFormTarget" id="hiddenFormTarget" style="display:none;"></iframe>
+
+<script>
+/*
+  ============================================================
+  CONFIG — fill these in from your actual Google Form
+  ============================================================
+  1. Open your Google Form -> click the 3-dot menu -> "Get pre-filled link".
+  2. Fill in dummy answers for every field, click "Get link".
+  3. Copy the generated link. It'll look like:
+     https://docs.google.com/forms/d/e/1FAIpQLSc.../viewform?usp=pp_url&entry.111=foo&entry.222=bar...
+  4. Paste the FORM_ID (the long string between /d/e/ and /viewform) below.
+  5. Match each entry.XXXXXXX number to the right field below by
+     checking which dummy answer landed in which field.
+  ============================================================
+*/
+const GOOGLE_FORM_ID = 'YOUR_FORM_ID_HERE'; // e.g. '1FAIpQLSc...XYZ'
+
+const ENTRY_IDS = {
+  name:     'entry.000000001', // replace with your real entry ID
+  idea:     'entry.000000002',
+  problem:  'entry.000000003',
+  platform: 'entry.000000004', // checkbox field — same entry ID reused per checked value
+  want:     'entry.000000005'  // multiple-choice field
+};
+
+// Your live Google Form currently shows "Your name" as required (red *)
+// even though its own label says "Username is optional." If that's
+// intentional, leave NAME_REQUIRED as true below. If you meant for it to
+// be truly optional, turn OFF "Required" for that question in Google
+// Forms and set this to false so the two stay in sync.
+const NAME_REQUIRED = true;
+// ============================================================
+
+const form = document.getElementById('requestForm');
+const submitBtn = document.getElementById('submitBtn');
+const successBox = document.getElementById('successBox');
+const hiddenFrame = document.getElementById('hiddenFormTarget');
+
+function clearErrors(){
+  document.querySelectorAll('.field.has-error').forEach(f => f.classList.remove('has-error'));
+}
+
+if(!NAME_REQUIRED){
+  document.getElementById('name-req').style.display = 'none';
+}
+
+function validate(){
+  clearErrors();
+  let ok = true;
+
+  if(NAME_REQUIRED){
+    const name = document.getElementById('f-name').value.trim();
+    if(!name){
+      document.getElementById('field-name').classList.add('has-error');
+      ok = false;
+    }
+  }
+
+  return ok;
+}
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+  if(!validate()) return;
+
+  if(GOOGLE_FORM_ID === 'YOUR_FORM_ID_HERE'){
+    alert('This form is not connected yet — the site owner needs to add their Google Form ID and entry IDs in the page source.');
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+
+  // Build a real <form> pointed at Google's formResponse endpoint and submit
+  // it into the hidden iframe. This avoids CORS issues entirely — we don't
+  // need to read the response, just fire the POST.
+  const gForm = document.createElement('form');
+  gForm.action = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/formResponse`;
+  gForm.method = 'POST';
+  gForm.target = 'hiddenFormTarget';
+  gForm.style.display = 'none';
+
+  function addField(name, value){
+    const inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.name = name;
+    inp.value = value;
+    gForm.appendChild(inp);
+  }
+
+  addField(ENTRY_IDS.name, document.getElementById('f-name').value.trim());
+  addField(ENTRY_IDS.idea, document.getElementById('f-idea').value.trim());
+  addField(ENTRY_IDS.problem, document.getElementById('f-problem').value.trim());
+
+  document.querySelectorAll('input[name="platform"]:checked').forEach(cb => {
+    addField(ENTRY_IDS.platform, cb.value);
+  });
+
+  const wantChecked = document.querySelector('input[name="want"]:checked');
+  if(wantChecked) addField(ENTRY_IDS.want, wantChecked.value);
+
+  document.body.appendChild(gForm);
+
+  let responded = false;
+  hiddenFrame.addEventListener('load', function onLoad(){
+    if(responded) return;
+    responded = true;
+    hiddenFrame.removeEventListener('load', onLoad);
+    form.style.display = 'none';
+    successBox.style.display = 'block';
+    gForm.remove();
+  });
+
+  // Fallback in case the iframe load event doesn't fire for some reason
+  setTimeout(() => {
+    if(responded) return;
+    responded = true;
+    form.style.display = 'none';
+    successBox.style.display = 'block';
+  }, 2500);
+
+  gForm.submit();
+});
+</script>
+
+</body>
+</html>
