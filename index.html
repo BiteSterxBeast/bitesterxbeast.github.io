@@ -924,7 +924,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.124</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.14</span>
       <button class="primary" id="settingsClose">Close & Save</button>
     </div>
   </div>
@@ -937,10 +937,25 @@
 
     <div style="margin-bottom: 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.124</h4>
-        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 6, 2026</span>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.14</h4>
+        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 11, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Fixed a security issue where channel titles, handles, and typed-in channel names could inject raw HTML into the page instead of being displayed as plain text.</li>
+        <li>Fixed milestone alerts so that jumping across multiple milestones in a single refresh (e.g. crossing both 500 and 1,000 subs at once) now correctly reports the highest milestone reached instead of the lowest.</li>
+        <li>Per-card "Auto-refresh subs" now only refreshes channel-level stats (subs/views/videos) instead of silently re-fetching the full upload list and every video's stats, matching what the label says and cutting quota usage substantially.</li>
+        <li>Video view-history used for VPH calculations is now automatically pruned once a video ages out of the 365-day tracking window, instead of growing forever in local storage.</li>
+        <li>Legacy /c/ and /user/ channel URLs now try an exact username lookup before falling back to a fuzzy search, reducing cases where the wrong channel got added.</li>
+        <li>"Dead Video" label in VPH stats no longer appears on brand-new uploads that simply haven't accumulated hourly view data yet — it's now reserved for videos with genuinely stalled view growth.</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.13</h4>
+        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 6, 2026</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--dim); font-size:12.5px; line-height:1.7;">
         <li>Added Discord Webhook integration to push milestone and subscriber alerts directly to your server.</li>
         <li>Added a customizable alert interval setting ranging from 'Every 1 Sub' up to 'Milestones Only'.</li>
         <li>Added a 'Test Webhook' button to verify connectivity.</li>
@@ -1169,11 +1184,20 @@ function fmt(n){
   return String(Math.round(n)); 
 }
 
-function fmtVph(n){
+function fmtVph(n, publishedAt){
   if(n === null || n === undefined) return '—';
   n = Number(n);
   let r = Math.round(n);
-  if(r === 0) return 'Dead Video';
+  if(r === 0){
+    // Only call it "dead" once the video has had enough time to accumulate
+    // meaningful hourly view data. Brand-new uploads with 0 VPH just haven't
+    // had a chance to register growth yet.
+    if(publishedAt){
+      const hoursSincePub = (Date.now() - new Date(publishedAt).getTime()) / 3600000;
+      if(hoursSincePub < 2) return '0/hr';
+    }
+    return 'Dead Video';
+  }
   if(n >= 1e9) return (n/1e9).toFixed(2).replace(/\.00$/,'') + 'B/hr';
   if(n >= 1e6) return (n/1e6).toFixed(2).replace(/\.00$/,'') + 'M/hr';
   if(n >= 1e3) return (n/1e3).toFixed(2).replace(/\.00$/,'') + 'K/hr';
@@ -1435,7 +1459,7 @@ function updateSidePanel() {
              </a>
           </div>
           <div style="font-size: 11px; color: var(--muted); margin-top: 6px; font-family: 'Space Grotesk', monospace;">
-             👁 ${fmt(d.bestVideo.views)} views &nbsp;•&nbsp; ⚡ ${fmtVph(d.bestVideo.vph)}
+             👁 ${fmt(d.bestVideo.views)} views &nbsp;•&nbsp; ⚡ ${fmtVph(d.bestVideo.vph, d.bestVideo.publishedAt)}
           </div>
         </div>
       `;
@@ -1450,7 +1474,7 @@ function updateSidePanel() {
           <img class="mini-avatar" src="${d && d.thumb ? d.thumb : ''}" style="transition: opacity 0.15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
         </a>
         <div class="mini-name">
-          <a href="https://www.youtube.com/channel/${ch.id}" target="_blank">${d ? d.title : ch.addedAs}</a>
+          <a href="https://www.youtube.com/channel/${ch.id}" target="_blank">${escapeHTML(d ? d.title : ch.addedAs)}</a>
         </div>
       </div>
       <div>
@@ -1605,10 +1629,10 @@ function renderLogs() {
     entryEl.className = 'log-entry';
     entryEl.innerHTML = `
       <div>
-        <div class="log-name">${log.channelTitle}</div>
-        <div class="log-time">${log.timeStr}</div>
+        <div class="log-name">${escapeHTML(log.channelTitle)}</div>
+        <div class="log-time">${escapeHTML(log.timeStr)}</div>
       </div>
-      <div class="log-diff ${log.isGain ? 'gain' : 'loss'}">${log.exactDiffStr}</div>
+      <div class="log-diff ${log.isGain ? 'gain' : 'loss'}">${escapeHTML(log.exactDiffStr)}</div>
     `;
     subLogContainer.appendChild(entryEl);
   });
@@ -1651,14 +1675,16 @@ function checkSubChanges(id, title, prevSubs, newSubs) {
     }
 
     // UI Milestone Logic
+    // Walk every milestone crossed in this update (not just the first one),
+    // so jumping across multiple milestones in one poll reports the highest
+    // one actually reached instead of silently stopping at the lowest.
     let hitMilestone = false;
     let hitValue = 0;
     
     for (let m of MILESTONES) {
       if (prevSubs < m && newSubs >= m) {
          hitMilestone = true;
-         hitValue = m;
-         break; 
+         hitValue = m; // keep going — later (higher) milestones should win
       }
     }
 
@@ -2112,6 +2138,21 @@ function saveVideoHistory() {
   try { localStorage.setItem('channelDeck_videoHistory', JSON.stringify(videoHistory)); } catch(e){}
 }
 
+// Removes videoHistory entries for videos that are no longer part of any
+// tracked channel's upload/video set, so the history object doesn't grow
+// forever in localStorage as channels post new videos over time.
+function pruneVideoHistory(activeVideoIds) {
+  const activeSet = new Set(activeVideoIds);
+  let changed = false;
+  for (const vid in videoHistory) {
+    if (!activeSet.has(vid)) {
+      delete videoHistory[vid];
+      changed = true;
+    }
+  }
+  if (changed) saveVideoHistory();
+}
+
 function extractHandleOrId(raw){
   raw = raw.trim();
   if(!raw) return null;
@@ -2134,6 +2175,14 @@ async function resolveChannelId(parsed){
   }
   if(parsed.type === 'handle'){
     const data = await fetchWithFallback(key => `${base}?part=id&forHandle=${encodeURIComponent(parsed.value.replace(/^@/,''))}&key=${key}`);
+    if(data.items && data.items.length) return data.items[0].id;
+    return await searchChannel(parsed.value);
+  }
+  if(parsed.type === 'legacy'){
+    // Legacy /c/ and /user/ URLs are usually (but not always) YouTube
+    // "usernames" — try an exact forUsername lookup first since it's
+    // unambiguous, and only fall back to fuzzy search if that misses.
+    const data = await fetchWithFallback(key => `${base}?part=id&forUsername=${encodeURIComponent(parsed.value)}&key=${key}`);
     if(data.items && data.items.length) return data.items[0].id;
     return await searchChannel(parsed.value);
   }
@@ -2269,6 +2318,7 @@ async function fetchAllDataFor(id, isCompetitor = false){
     const uploadsId = core.contentDetails.relatedPlaylists.uploads;
     const videos = await fetchUploadsWithinDays(uploadsId, 365);
     const viewStats = await fetchVideoStats(videos.map(v=>v.id));
+    pruneVideoHistory(videos.map(v=>v.id));
     const windows = computeWindows(videos, viewStats);
     const bestVideo = findBestRecentVideo(videos, viewStats, 7);
     
@@ -2367,12 +2417,12 @@ function render(){
         <div class="card-top">
           <div class="avatar"></div>
           <div class="card-title">
-            <div class="name"><a href="https://www.youtube.com/channel/${ch.id}" target="_blank" rel="noopener noreferrer">${ch.addedAs}</a></div>
-            <div class="handle">channel ID: ${ch.id}</div>
+            <div class="name"><a href="https://www.youtube.com/channel/${ch.id}" target="_blank" rel="noopener noreferrer">${escapeHTML(ch.addedAs)}</a></div>
+            <div class="handle">channel ID: ${escapeHTML(ch.id)}</div>
           </div>
           <button class="remove-btn" data-remove="${ch.id}" title="Remove">✕</button>
         </div>
-        <div class="error-msg">Couldn't load this channel: ${c.error}</div>
+        <div class="error-msg">Couldn't load this channel: ${escapeHTML(c.error)}</div>
         <button class="ghost" data-retry="${ch.id}">Retry</button>
       `;
       grid.appendChild(card);
@@ -2399,7 +2449,7 @@ function render(){
           </div>
           <div class="best-video-stats">
             <span>👁 ${fmt(d.bestVideo.views)} views</span>
-            <span>⚡ ${fmtVph(d.bestVideo.vph)}</span>
+            <span>⚡ ${fmtVph(d.bestVideo.vph, d.bestVideo.publishedAt)}</span>
           </div>
         </div>
       `;
@@ -2443,8 +2493,8 @@ function render(){
       <div class="card-top">
         <img class="avatar" src="${d && d.thumb ? d.thumb : ''}" alt="">
         <div class="card-title">
-          <div class="name"><a href="https://www.youtube.com/channel/${ch.id}" target="_blank" rel="noopener noreferrer">${d ? d.title : ch.addedAs}</a></div>
-          <div class="handle">${d && d.handle ? d.handle : ch.addedAs}</div>
+          <div class="name"><a href="https://www.youtube.com/channel/${ch.id}" target="_blank" rel="noopener noreferrer">${escapeHTML(d ? d.title : ch.addedAs)}</a></div>
+          <div class="handle">${escapeHTML(d && d.handle ? d.handle : ch.addedAs)}</div>
         </div>
         <button class="remove-btn" data-remove="${ch.id}" title="Remove channel">✕</button>
       </div>
@@ -2523,12 +2573,12 @@ function render(){
             <div class="card-top">
               <div class="avatar"></div>
               <div class="card-title">
-                <div class="name"><a href="https://www.youtube.com/channel/${ch.id}" target="_blank" rel="noopener noreferrer">${ch.addedAs}</a></div>
-                <div class="handle">channel ID: ${ch.id}</div>
+                <div class="name"><a href="https://www.youtube.com/channel/${ch.id}" target="_blank" rel="noopener noreferrer">${escapeHTML(ch.addedAs)}</a></div>
+                <div class="handle">channel ID: ${escapeHTML(ch.id)}</div>
               </div>
               <button class="remove-btn" data-remove-comp="${ch.id}" title="Remove">✕</button>
             </div>
-            <div class="error-msg">Couldn't load this channel: ${c.error}</div>
+            <div class="error-msg">Couldn't load this channel: ${escapeHTML(c.error)}</div>
             <button class="ghost" data-retry-comp="${ch.id}">Retry</button>
           </div>
         `;
@@ -2569,9 +2619,9 @@ function render(){
               <img class="avatar click-to-pin" data-pin="${ch.id}" src="${d && d.thumb ? d.thumb : ''}" alt="" title="Click to pin to side panel">
               <div class="card-title">
                 <div class="name click-to-pin" data-pin="${ch.id}" title="Click to pin to side panel">
-                  <a href="https://www.youtube.com/channel/${ch.id}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${d ? d.title : ch.addedAs}</a>
+                  <a href="https://www.youtube.com/channel/${ch.id}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${escapeHTML(d ? d.title : ch.addedAs)}</a>
                 </div>
-                <div class="handle">${d && d.handle ? d.handle : ch.addedAs}</div>
+                <div class="handle">${escapeHTML(d && d.handle ? d.handle : ch.addedAs)}</div>
               </div>
               <button class="remove-btn" data-remove-comp="${ch.id}" title="Remove competitor">✕</button>
             </div>
@@ -2643,7 +2693,7 @@ function render(){
                </div>
                <div class="comp-vid-meta">
                  <div>Views<span>${fmt(targetVid.views)}</span></div>
-                 <div>VPH<span>${fmtVph(targetVid.vph)}</span></div>
+                 <div>VPH<span>${fmtVph(targetVid.vph, targetVid.publishedAt)}</span></div>
                  <div>Date<span>${dateStr}</span></div>
                </div>
            `;
@@ -2823,33 +2873,16 @@ function stopAutoRefresh(id){
   if(autoRefreshTimers[id]){ clearInterval(autoRefreshTimers[id]); delete autoRefreshTimers[id]; }
 }
 async function refreshLiveStatsOnly(id){
+  // This is intentionally lightweight — it only re-fetches the channel's
+  // core stats (subs/views/videos), NOT the full upload list + per-video
+  // stats. That heavier refresh happens via fetchAllDataFor() on manual
+  // "Refresh all" / per-card refresh instead, so this per-card auto-refresh
+  // toggle doesn't silently burn a full refresh's worth of API quota
+  // every tick just to keep subscriber counts current.
   if(!hasApiKey()) return;
   try{
     const core = await fetchChannelCore(id);
     const prev = cache[id] && cache[id].data ? cache[id].data : {};
-    
-    // Auto-refresh the video stats as well to keep the Best Video tab accurate
-    const uploadsId = core.contentDetails.relatedPlaylists.uploads;
-    const videos = await fetchUploadsWithinDays(uploadsId, 365);
-    const viewStats = await fetchVideoStats(videos.map(v=>v.id));
-    const windows = computeWindows(videos, viewStats);
-    const bestVideo = findBestRecentVideo(videos, viewStats, 7);
-    
-    let newestVideo = null;
-    if(videos.length > 0) {
-       const nv = videos[0];
-       const nvStats = viewStats[nv.id];
-       if(nvStats) {
-         newestVideo = {
-           id: nv.id, 
-           title: nvStats.title, 
-           views: nvStats.views, 
-           vph: nvStats.vph,
-           thumb: nvStats.thumb, 
-           publishedAt: nvStats.publishedAt
-         };
-       }
-    }
 
     const newSubs = core.statistics.hiddenSubscriberCount ? null : Number(core.statistics.subscriberCount);
     
@@ -2864,9 +2897,6 @@ async function refreshLiveStatsOnly(id){
         subs: newSubs,
         totalViews: Number(core.statistics.viewCount || 0),
         totalVideos: Number(core.statistics.videoCount || 0),
-        windows: windows,
-        bestVideo: bestVideo,
-        newestVideo: newestVideo,
         syncedAt: Date.now(),
         syncError: false 
       }
