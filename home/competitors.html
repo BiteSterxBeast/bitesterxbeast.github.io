@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Channel Deck — Competitors</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="stylesheet" href="../assets/style.css">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Channel Deck">
+<meta property="og:description" content="A live multi-channel YouTube analytics dashboard tracking real-time subscribers, VPH, video performance, and historical graphs.">
+<meta property="og:url" content="https://bitesterxbeast.github.io/channeldeck/home/competitors.html">
+<meta property="og:image" content="https://bitesterxbeast.github.io/favicon.png">
+<meta name="theme-color" content="#34D6C4">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="live-dot"></span>
+    <a href="../../index.html"><h1>CHANNEL DECK <span>/ multi-channel monitor</span></h1></a>
+  </div>
+  <div class="actions">
+    <button class="ghost settings-btn" id="changelogBtn" title="Changelog">↑</button>
+    <button class="ghost settings-btn" id="settingsBtn" title="Settings">⚙</button>
+    <button class="ghost" id="apiKeyBtn">API keys</button>
+    <button class="ghost" id="refreshAllBtn">Refresh all</button>
+    <button class="primary" id="addBtn">+ Add competitor</button>
+  </div>
+</header>
+
+<div class="tabs-bar">
+  <a href="index.html" class="ghost">Tab List</a>
+  <a href="graph.html" class="ghost">Graph View</a>
+  <a href="competitors.html" class="primary">Competitors</a>
+</div>
+
+<main>
+  <div id="emptyStateCompetitors" class="empty" style="display:none;">
+    <h2>No competitors tracked</h2>
+    <p>Click "+ Add competitor" in the top right to start tracking rival channels side-by-side.</p>
+  </div>
+  <div id="competitorsGrid"></div>
+</main>
+
+<div class="footnote" id="footnote"></div>
+
+<!-- Side Panel -->
+<div id="sidePanel" class="side-panel">
+  <div class="side-panel-header">
+    <h2>Pinned Competitors</h2>
+    <button id="closePanelBtn" class="side-panel-close">✕</button>
+  </div>
+  <div id="sidePanelContent" class="side-panel-content">
+    <div style="color:var(--muted); font-size:12px; text-align:center; margin-top: 20px;">
+      Click a competitor's avatar or name on the competitors grid to pin it here.
+    </div>
+  </div>
+</div>
+
+<!-- Active API Status Indicator -->
+<div id="apiStatusIndicator" class="api-status" style="display:none;">
+  Using API Key 1
+</div>
+
+<!-- Activity Log -->
+<div id="subLogWrapper" class="sub-log-wrapper" style="display: none;">
+  <div class="sub-log-header" id="subLogHeader">
+    <span style="display:flex; align-items:center; gap:6px;">≡ Activity Log</span>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <select id="logSizeSelect" style="background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:4px; font-size:10px; padding:2px; cursor:pointer; outline:none;">
+        <option value="small">Small text</option>
+        <option value="medium" selected>Medium text</option>
+        <option value="large">Large text</option>
+        <option value="xlarge">Extra Large text</option>
+      </select>
+      <button id="clearLogBtn" class="ghost" style="padding: 4px 8px; font-size: 10px; min-height: auto; border:none;">Clear</button>
+    </div>
+  </div>
+  <div id="subLogContainer" class="sub-log-container"></div>
+</div>
+
+<!-- Settings Modal -->
+<div class="overlay" id="settingsOverlay" style="display:none;">
+  <div class="modal">
+    <h3>Settings</h3>
+
+    <div class="settings-group">
+      <h4>Discord Webhook Alerts</h4>
+      <label for="webhookInput">Webhook URL</label>
+      <input type="text" id="webhookInput" placeholder="https://discord.com/api/webhooks/..." style="font-family: monospace; font-size: 11px;">
+
+      <label for="webhookInterval" style="margin-top: 8px;">Alert Interval</label>
+      <select id="webhookInterval" style="width:100%; padding:8px 12px; margin-bottom:12px; border-radius:7px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); font-family: 'Inter', sans-serif; font-size:13px; outline: none; cursor:pointer;">
+        <option value="1">Every 1 Subscriber</option>
+        <option value="10">Every 10 Subscribers</option>
+        <option value="100">Every 100 Subscribers</option>
+        <option value="1000">Every 1,000 Subscribers</option>
+        <option value="10000">Every 10,000 Subscribers</option>
+        <option value="100000">Every 100,000 Subscribers</option>
+        <option value="1000000">Every 1,000,000 Subscribers</option>
+        <option value="milestones">Milestones Only</option>
+      </select>
+      <div style="display:flex; gap: 8px;">
+        <button id="testWebhookBtn" class="ghost" style="flex:1;">Test Webhook</button>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h4>Auto-Refresh Interval</h4>
+      <div style="margin-bottom: 12px; font-size: 12px; font-family: 'Inter', sans-serif; color: var(--text);" id="refreshIntervalLabel">
+        15s - Rapid (Not Recommended With 4+ Channels)
+      </div>
+      <input type="range" id="refreshIntervalSlider" min="0" max="3" step="1" value="0">
+    </div>
+
+    <div class="settings-group">
+      <h4>Audio Settings</h4>
+      <div class="slider-row">
+        <label for="volSlider" style="margin:0; width: 60px;">Volume</label>
+        <input type="range" id="volSlider" min="0" max="100" value="100" style="flex:1; margin:0;">
+      </div>
+      <div style="display:flex; gap: 8px;">
+        <button id="muteBtn" class="ghost" style="flex:1;">Mute SFX: OFF</button>
+        <button id="testAudioBtn" class="ghost" style="flex:1;">Test Audio</button>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h4>Display View Windows</h4>
+      <div class="checkbox-grid" id="windowTogglesGrid">
+        <!-- populated via js -->
+      </div>
+    </div>
+
+    <div class="modal-actions" style="justify-content: space-between; align-items: center;">
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.14</span>
+      <button class="primary" id="settingsClose">Close & Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Changelog Modal -->
+<div class="overlay" id="changelogOverlay" style="display:none;">
+  <div class="modal" style="max-height: 85vh; overflow-y: auto;">
+    <h3 style="margin-bottom: 20px;">Changelog</h3>
+    <div style="margin-bottom: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.14</h4>
+        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 11, 2026</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Split the single 3,000-line file into a proper multi-page site. See the Tab List page changelog for the full list of fixes in this release.</li>
+      </ul>
+    </div>
+    <div class="modal-actions">
+      <button class="primary" id="changelogClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="addOverlay" style="display:none;">
+  <div class="modal">
+    <h3 id="addOverlayTitle">Add a competitor</h3>
+    <p>Paste a channel @handle (e.g. <span class="num">@mkbhd</span>), a full channel URL, or a channel ID (starts with UC).</p>
+    <label for="channelInput">Channel</label>
+    <input type="text" id="channelInput" placeholder="@yourchannel" autocomplete="off">
+    <div class="modal-error" id="addError" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="ghost" id="addCancel">Cancel</button>
+      <button class="primary" id="addConfirm">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="keyOverlay" style="display:none;">
+  <div class="modal">
+    <h3>YouTube Data API keys</h3>
+    <p>Add up to 7 API keys. The deck will automatically switch to the next one if a quota is hit.</p>
+
+    <div id="apiKeyList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+      <!-- JavaScript will populate this -->
+    </div>
+
+    <button class="ghost" id="addApiKeyBtn" style="width:100%; border-style:dashed; margin-bottom:20px;">+ Add API Key</button>
+
+    <div class="modal-actions">
+      <button class="ghost" id="keyCancel">Close</button>
+      <button class="primary" id="keySave">Save</button>
+    </div>
+  </div>
+</div>
+
+<audio id="subGainSound" src="../../sub_gain.mp3" preload="auto"></audio>
+<audio id="subLossSound" src="../../sub_loss.mp3" preload="auto"></audio>
+<audio id="milestoneSound" src="../../milestone.mp3" preload="auto"></audio>
+
+<script src="../assets/state.js"></script>
+<script src="../assets/api.js"></script>
+<script src="../assets/ui.js"></script>
+<script src="../assets/competitors.js"></script>
+</body>
+</html>
