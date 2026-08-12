@@ -298,8 +298,25 @@
   </div>
 
   <div class="changelog-section">
+    <h3>Thumbnail Downloader</h3>
+    <div class="changelog-entry latest">
+      <div class="changelog-entry-head">
+        <span class="v">V1.0 — Launch</span>
+        <span class="d">August 12, 2026</span>
+      </div>
+      <ul>
+        <li>Thumbnail Downloader is live — paste a YouTube link and grab its thumbnail in the highest resolution available, no sign-in required.</li>
+        <li>Automatic resolution fallback: tries maxresdefault first and steps down through sddefault, hqdefault, mqdefault, and default if a higher resolution isn't available for that video.</li>
+        <li>Downloaded files are automatically named after the video's real title, pulled from YouTube's public oEmbed endpoint.</li>
+        <li>Added a "processing queue" panel showing live download progress, with a floating status button in the corner — the same pattern future downloader tools on this site will share.</li>
+        <li>On mobile, downloads open the full-size thumbnail in a new tab instead of trying to force a save, since mobile browsers handle forced downloads inconsistently.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="changelog-section">
     <h3>More Tools</h3>
-    <p class="changelog-note">Mash Uploads, Extended Studios, Thumbnail Downloader, and Video Downloader will each get their own changelog section here once they launch.</p>
+    <p class="changelog-note">Mash Uploads, Extended Studios, and Video Downloader will each get their own changelog section here once they launch.</p>
   </div>
 </main>
 <footer>
