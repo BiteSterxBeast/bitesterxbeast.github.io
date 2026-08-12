@@ -173,32 +173,6 @@
     padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:10px;
   }
 
-  /* Floating toggle button */
-  .queue-toggle{
-    position:fixed; top:24px; right:28px; z-index:110;
-    width:44px; height:44px; border-radius:50%;
-    background:var(--queue-blue); border:1px solid var(--queue-blue);
-    display:flex; align-items:center; justify-content:center; cursor:pointer;
-    box-shadow:0 4px 14px rgba(0,0,0,0.5);
-    transition:transform .15s;
-  }
-  .queue-toggle:hover{ transform:scale(1.05); }
-  .queue-toggle svg{ width:18px; height:18px; stroke:#fff; }
-  .queue-toggle.active{
-    animation:queuePulse 1.6s infinite;
-  }
-  @keyframes queuePulse{
-    0%{ box-shadow:0 0 0 0 rgba(59,130,246,0.55), 0 4px 14px rgba(0,0,0,0.5); }
-    70%{ box-shadow:0 0 0 10px rgba(59,130,246,0), 0 4px 14px rgba(0,0,0,0.5); }
-    100%{ box-shadow:0 0 0 0 rgba(59,130,246,0), 0 4px 14px rgba(0,0,0,0.5); }
-  }
-  @media (prefers-reduced-motion: reduce){ .queue-toggle.active{ animation:none; } }
-  .queue-toggle-badge{
-    position:absolute; top:-4px; right:-4px; min-width:16px; height:16px; padding:0 4px;
-    border-radius:20px; background:var(--live); color:#fff; font-size:9.5px; font-weight:700;
-    display:flex; align-items:center; justify-content:center; border:2px solid var(--bg);
-  }
-
   /* Processing queue panel */
   .queue-panel{
     position:fixed; bottom:24px; left:24px; z-index:100;
@@ -211,11 +185,13 @@
     flex-direction:column;
     overflow:hidden;
   }
-  .queue-panel.open{ display:flex; }
+  .queue-panel.has-items{ display:flex; }
+  .queue-panel.collapsed .queue-list{ display:none; }
   .queue-panel-head{
     display:flex; align-items:center; justify-content:space-between;
     padding:14px 16px; border-bottom:1px solid var(--line); flex-shrink:0;
   }
+  .queue-panel.collapsed .queue-panel-head{ border-bottom:none; }
   .queue-panel-head .title{
     display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--text);
   }
@@ -223,11 +199,20 @@
     font-size:9.5px; font-weight:700; color:#0B0D10; background:var(--text);
     padding:2px 7px; border-radius:5px; letter-spacing:0.03em;
   }
+  .queue-head-actions{ display:flex; align-items:center; gap:12px; }
   .queue-clear{
     background:none; border:none; color:var(--live); font-size:12px; font-weight:600;
     cursor:pointer; display:flex; align-items:center; gap:4px; padding:0;
   }
   .queue-clear:hover{ opacity:0.8; }
+  .queue-minimize{
+    background:none; border:none; color:var(--muted); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:2px;
+    transition:color .15s, transform .15s;
+  }
+  .queue-minimize:hover{ color:var(--text); }
+  .queue-minimize svg{ width:14px; height:14px; transition:transform .2s; }
+  .queue-panel.collapsed .queue-minimize svg{ transform:rotate(180deg); }
   .queue-list{ overflow-y:auto; padding:8px 0; }
   .queue-empty{ padding:24px 16px; text-align:center; font-size:12.5px; color:var(--dim); }
 
@@ -316,17 +301,16 @@
   </div>
 </main>
 
-<!-- Floating queue toggle -->
-<button class="queue-toggle" id="queueToggle" title="Processing queue">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
-  <span class="queue-toggle-badge" id="queueBadge" style="display:none;">0</span>
-</button>
-
-<!-- Processing queue panel -->
+<!-- Processing queue panel — shows itself automatically once a download starts -->
 <div class="queue-panel" id="queuePanel">
   <div class="queue-panel-head">
     <div class="title">processing queue <span class="queue-beta-badge">BETA</span></div>
-    <button class="queue-clear" id="queueClearBtn">✕ clear</button>
+    <div class="queue-head-actions">
+      <button class="queue-clear" id="queueClearBtn">✕ clear</button>
+      <button class="queue-minimize" id="queueMinimizeBtn" title="Minimize">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+      </button>
+    </div>
   </div>
   <div class="queue-list" id="queueList">
     <div class="queue-empty" id="queueEmptyMsg">Nothing here yet — download a thumbnail to see it show up.</div>
@@ -349,18 +333,16 @@
   const downloadBtn = document.getElementById('downloadBtn');
   const openTabBtn = document.getElementById('openTabBtn');
 
-  const queueToggle = document.getElementById('queueToggle');
-  const queueBadge = document.getElementById('queueBadge');
   const queuePanel = document.getElementById('queuePanel');
   const queueList = document.getElementById('queueList');
   const queueEmptyMsg = document.getElementById('queueEmptyMsg');
   const queueClearBtn = document.getElementById('queueClearBtn');
+  const queueMinimizeBtn = document.getElementById('queueMinimizeBtn');
 
   let currentVideoId = null;
   let currentTitle = null;
   let currentResUrl = null;
   let currentResLabel = null;
-  let activeDownloads = 0;
 
   // --- Video ID extraction ---
   function extractVideoId(raw){
@@ -483,28 +465,22 @@
   urlInput.addEventListener('keydown', e => { if(e.key === 'Enter') handleFetch(); });
 
   // --- Queue UI ---
-  function updateQueueToggleState(){
-    if(activeDownloads > 0){
-      queueToggle.classList.add('active');
-    } else {
-      queueToggle.classList.remove('active');
-    }
-    if(queueList.children.length > (queueEmptyMsg.parentNode === queueList ? 1 : 0)){
-      queueBadge.style.display = 'flex';
-      queueBadge.textContent = queueList.querySelectorAll('.queue-item').length;
-    } else {
-      queueBadge.style.display = 'none';
-    }
+  // Panel shows itself automatically whenever there's at least one item —
+  // no separate toggle button needed. A small chevron in the panel's own
+  // header lets you collapse/expand the list without hiding it entirely.
+  function updateQueuePanelVisibility(){
+    const hasItems = queueList.querySelectorAll('.queue-item').length > 0;
+    queuePanel.classList.toggle('has-items', hasItems);
   }
 
-  queueToggle.addEventListener('click', () => {
-    queuePanel.classList.toggle('open');
+  queueMinimizeBtn.addEventListener('click', () => {
+    queuePanel.classList.toggle('collapsed');
   });
 
   queueClearBtn.addEventListener('click', () => {
     queueList.querySelectorAll('.queue-item').forEach(el => el.remove());
     if(!queueList.contains(queueEmptyMsg)) queueList.appendChild(queueEmptyMsg);
-    updateQueueToggleState();
+    updateQueuePanelVisibility();
   });
 
   function addQueueItem(title){
@@ -523,7 +499,8 @@
       </div>
     `;
     queueList.prepend(item);
-    updateQueueToggleState();
+    queuePanel.classList.remove('collapsed');
+    updateQueuePanelVisibility();
     return item;
   }
 
@@ -586,9 +563,6 @@
     }
 
     const item = addQueueItem(displayTitle);
-    activeDownloads++;
-    updateQueueToggleState();
-    queuePanel.classList.add('open');
 
     try{
       const res = await fetch(currentResUrl);
@@ -627,9 +601,6 @@
       }catch(e2){
         setQueueItemError(item, "couldn't download — try Open Full Size instead");
       }
-    }finally{
-      activeDownloads = Math.max(0, activeDownloads - 1);
-      updateQueueToggleState();
     }
   }
 
