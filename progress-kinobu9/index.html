@@ -107,7 +107,10 @@
   </div>
 </main>
 
-<script src="data.js"></script>
+<script>
+  // cache-bust data.js so updates always show up without a hard refresh
+  document.write('<scr' + 'ipt src="data.js?t=' + Date.now() + '"></scr' + 'ipt>');
+</script>
 <script>
 (function(){
   function fmt(n){
