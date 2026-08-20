@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Progress</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<link rel="icon" type="image/png" href="../favicon.png">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0B0D10;
+    --panel:#14171C;
+    --panel-2:#1B1F26;
+    --line:#262B33;
+    --text:#E8EAED;
+    --muted:#8A93A1;
+    --dim:#5A626F;
+    --teal:#34D6C4;
+    --amber:#F2B84B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at 20% -10%, #1a1d24 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  a{ color:inherit; }
+
+  header{
+    padding:24px 32px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+  .live-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 0 0 rgba(52,214,196,0.6);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(52,214,196,0.55);}
+    70%{box-shadow:0 0 0 9px rgba(52,214,196,0);}
+    100%{box-shadow:0 0 0 0 rgba(52,214,196,0);}
+  }
+  header h1{
+    font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:600; margin:0;
+    letter-spacing:0.02em; color:var(--text);
+  }
+  .back-link{ font-size:13px; font-weight:600; color:var(--muted); text-decoration:none; }
+  .back-link:hover{ color:var(--teal); }
+
+  main{ max-width:480px; margin:0 auto; padding:80px 24px; }
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:40px 32px; text-align:center;
+  }
+  .eyebrow{
+    display:inline-block; font-size:11px; font-weight:600; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--teal); background:rgba(52,214,196,0.08);
+    border:1px solid rgba(52,214,196,0.25); padding:6px 12px; border-radius:20px;
+    margin-bottom:22px;
+  }
+  .amounts{
+    font-family:'Space Grotesk',sans-serif; font-size:38px; font-weight:700;
+    margin:0 0 6px; letter-spacing:-0.01em;
+  }
+  .amounts .of{ color:var(--dim); font-weight:500; font-size:22px; margin:0 4px; }
+  .amounts .goal-num{ color:var(--muted); }
+
+  .bar-outer{
+    height:16px; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:20px; overflow:hidden; margin:26px 0 12px;
+  }
+  .bar-fill{
+    height:100%; background:linear-gradient(90deg, var(--teal), #4be2d1);
+    border-radius:20px; width:0%; transition:width .6s ease;
+  }
+  .bar-fill.over{ background:linear-gradient(90deg, var(--amber), #f7cd7a); }
+  .percent{ font-size:13.5px; color:var(--muted); margin:0; font-weight:600; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="#">
+    <span class="live-dot"></span>
+    <h1>Progress</h1>
+  </a>
+  <a class="back-link" href="../index.html">← Home</a>
+</header>
+
+<main>
+  <div class="card">
+    <span class="eyebrow">Current Progress</span>
+    <p class="amounts" id="amountsText">$0 <span class="of">of</span> <span class="goal-num" id="goalText">$0</span></p>
+    <div class="bar-outer"><div class="bar-fill" id="barFill"></div></div>
+    <p class="percent" id="percentText">0%</p>
+  </div>
+</main>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  function fmt(n){
+    return "$" + Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  var current = (typeof CURRENT_AMOUNT === 'number') ? CURRENT_AMOUNT : 0;
+  var goal = (typeof GOAL_AMOUNT === 'number' && GOAL_AMOUNT > 0) ? GOAL_AMOUNT : 100;
+  var pct = (current / goal) * 100;
+  var displayPct = Math.max(0, Math.min(pct, 100));
+
+  document.getElementById('amountsText').innerHTML =
+    fmt(current) + ' <span class="of">of</span> <span class="goal-num">' + fmt(goal) + '</span>';
+  document.getElementById('barFill').style.width = displayPct + '%';
+  document.getElementById('barFill').className = 'bar-fill' + (pct > 100 ? ' over' : '');
+  document.getElementById('percentText').textContent = Math.round(pct) + '%';
+})();
+</script>
+
+</body>
+</html>
