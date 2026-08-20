@@ -3,5 +3,5 @@
 // Save the file, commit, and push. That's it.
 // ============================================
 
-var CURRENT_AMOUNT = 15;   // how much has been made so far
-var GOAL_AMOUNT = 100;     // the target goal
+var CURRENT_AMOUNT = 6;   // how much has been made so far
+var GOAL_AMOUNT = 20;     // the target goal
