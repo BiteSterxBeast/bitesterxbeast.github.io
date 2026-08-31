@@ -714,11 +714,7 @@ function wireAddModal(kind){
       await fetchAllDataFor(id, isCompetitor);
 
       if (!isCompetitor) {
-        if (chartSnapshots.labels.length === 0) {
-          recordChartSnapshot();
-        } else if (typeof updateChart === 'function') {
-          updateChart();
-        }
+        recordChartSnapshot();
       }
 
     }catch(e){
