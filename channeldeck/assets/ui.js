@@ -653,7 +653,20 @@ if (refreshAllBtn) refreshAllBtn.onclick = refreshAll;
 // Both list.html and graph.html use wireAddChannelModal(); competitors.html
 // uses wireAddCompetitorModal(). Each pushes into the relevant array and
 // kicks off a full data fetch, then lets the page re-render via window.refreshUI.
-function wireAddModal(targetArray, saveFn, isCompetitor, existsMessage){
+//
+// IMPORTANT: this must NOT capture `channels` / `competitors` by reference.
+// loadState() runs later (inside initCommonPage) and *reassigns* those globals
+// to freshly-parsed arrays. A captured reference would then point at the
+// original, now-orphaned array, so pushes would silently vanish and the
+// duplicate check would always miss. We resolve the live array on every call.
+function wireAddModal(kind){
+  const isCompetitor = kind === 'competitor';
+  const getTargetArray = () => (isCompetitor ? competitors : channels);
+  const saveFn = () => (isCompetitor ? saveCompetitors() : saveChannels());
+  const existsMessage = isCompetitor
+    ? 'That competitor is already on your deck.'
+    : 'That channel is already on your deck.';
+
   const addBtn = document.getElementById('addBtn');
   const addOverlay = document.getElementById('addOverlay');
   const channelInput = document.getElementById('channelInput');
@@ -680,6 +693,7 @@ function wireAddModal(targetArray, saveFn, isCompetitor, existsMessage){
     addConfirm.disabled = true;
     try{
       const id = await resolveChannelId(parsed);
+      const targetArray = getTargetArray();
 
       if(targetArray.some(c => c.id === id)){
         addError.textContent = existsMessage;
@@ -722,13 +736,13 @@ function wireAddModal(targetArray, saveFn, isCompetitor, existsMessage){
 function wireAddChannelModal(){
   const addOverlayTitle = document.getElementById('addOverlayTitle');
   if (addOverlayTitle) addOverlayTitle.innerText = 'Add a channel';
-  wireAddModal(channels, saveChannels, false, 'That channel is already on your deck.');
+  wireAddModal('channel');
 }
 
 function wireAddCompetitorModal(){
   const addOverlayTitle = document.getElementById('addOverlayTitle');
   if (addOverlayTitle) addOverlayTitle.innerText = 'Add a competitor';
-  wireAddModal(competitors, saveCompetitors, true, 'That competitor is already on your deck.');
+  wireAddModal('competitor');
 }
 
 // --- Page bootstrap ---
