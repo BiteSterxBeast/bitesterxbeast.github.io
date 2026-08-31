@@ -5,6 +5,28 @@ const chartCtx = document.getElementById('subChart').getContext('2d');
 
 let currentGraphMetric = 'subs'; // 'subs' or 'views'
 let currentViewsSubMetric = 'vph'; // 'vph' or 'total'
+let currentRangeDays = 7; // 7 | 28 | 90
+
+const rangeToggles = document.getElementById('rangeToggles');
+
+function renderRangeToggles(){
+  if (!rangeToggles) return;
+  rangeToggles.innerHTML = '';
+  GRAPH_RANGES.forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = currentRangeDays === r.days ? 'primary' : 'ghost';
+    btn.style.fontSize = '11px';
+    btn.style.padding = '6px 12px';
+    btn.innerText = r.label;
+    btn.onclick = () => {
+      currentRangeDays = r.days;
+      if (subChart) subChart.resetZoom();
+      renderRangeToggles();
+      updateChart();
+    };
+    rangeToggles.appendChild(btn);
+  });
+}
 
 const metricSubsBtn = document.getElementById('metricSubsBtn');
 const metricViewsBtn = document.getElementById('metricViewsBtn');
@@ -68,6 +90,17 @@ document.getElementById('resetZoomBtn').onclick = () => {
 };
 
 function updateChart() {
+  // Slice the stored history down to the selected range. Everything outside it
+  // stays in localStorage — this only changes what's drawn.
+  const cutoff = Date.now() - currentRangeDays * 86400000;
+  const stamps = chartSnapshots.timestamps || [];
+  const visible = [];
+  for (let i = 0; i < stamps.length; i++) {
+    if (stamps[i] >= cutoff) visible.push(i);
+  }
+
+  const labels = visible.map(i => formatSnapshotLabel(stamps[i], currentRangeDays));
+
   const activeDatasets = channels
     .filter(ch => ch.showOnGraph !== false)
     .map(ch => {
@@ -80,18 +113,23 @@ function updateChart() {
         else if (currentGraphMetric === 'views' && currentViewsSubMetric === 'total') targetData = ds.viewsData;
         else targetData = ds.vphData;
 
+        const sliced = visible.map(i => (targetData && targetData[i] !== undefined) ? targetData[i] : null);
+
         return {
            label: ds.label,
-           data: targetData,
+           data: sliced,
            borderColor: ds.color || '#34D6C4',
            backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`,
            fill: true,
            tension: 0,
            borderWidth: 2,
-           pointRadius: 2,
+           // 28d/90d can hold hundreds of hourly points — drawing a marker on
+           // each one turns the line into a solid band, so markers only appear
+           // on hover at the wider ranges.
+           pointRadius: currentRangeDays <= 7 ? 2 : 0,
            pointHoverRadius: 5,
            pointHitRadius: 15,
-           spanGaps: true
+           spanGaps: false
         };
     }).filter(Boolean);
 
@@ -99,15 +137,19 @@ function updateChart() {
     subChart = new Chart(chartCtx, {
       type: 'line',
       data: {
-        labels: chartSnapshots.labels,
+        labels: labels,
         datasets: activeDatasets
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false,
         scales: {
           y: { type: 'linear', ticks: { color: '#8A93A1' }, grid: { color: '#262B33' } },
-          x: { ticks: { color: '#8A93A1' }, grid: { color: '#262B33' } }
+          x: {
+            ticks: { color: '#8A93A1', maxTicksLimit: 12, autoSkip: true },
+            grid: { color: '#262B33' }
+          }
         },
         plugins: {
           legend: { labels: { color: '#E8EAED', font: { family: 'Inter' } } },
@@ -127,13 +169,34 @@ function updateChart() {
       }
     });
   } else {
-    subChart.data.labels = chartSnapshots.labels;
+    subChart.data.labels = labels;
     subChart.data.datasets = activeDatasets;
     subChart.update();
   }
 }
 
+// --- Reset Graph ---
+const resetGraphBtn = document.getElementById('resetGraphBtn');
+const resetGraphOverlay = document.getElementById('resetGraphOverlay');
+const resetGraphCancel = document.getElementById('resetGraphCancel');
+const resetGraphConfirm = document.getElementById('resetGraphConfirm');
+
+if (resetGraphBtn) resetGraphBtn.onclick = () => {
+  resetGraphOverlay.style.display = 'flex';
+};
+if (resetGraphCancel) resetGraphCancel.onclick = () => {
+  resetGraphOverlay.style.display = 'none';
+};
+if (resetGraphConfirm) resetGraphConfirm.onclick = () => {
+  clearChartSnapshots();
+  if (subChart) subChart.resetZoom();
+  recordChartSnapshot(); // start a fresh series from the current hour
+  updateChart();
+  resetGraphOverlay.style.display = 'none';
+};
+
 window.refreshUI = () => { renderGraphToggles(); updateChart(); };
 
 wireAddChannelModal();
+renderRangeToggles();
 initCommonPage(() => { renderGraphToggles(); updateChart(); });
