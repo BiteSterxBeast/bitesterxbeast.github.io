@@ -207,20 +207,42 @@ function findBestRecentVideo(videos, viewStats, maxDays = 7) {
 
 // --- Chart snapshot recording (data-layer only; rendering the canvas is
 // graph.js's job via the optional window.updateChart hook) ---
+//
+// One point per clock hour. Three cases:
+//   - Same hour as the last point  -> overwrite it, so the newest reading wins.
+//   - Next hour                    -> append.
+//   - Gap (page was closed)        -> backfill every missed hour with the last
+//                                     known value, then append. That repetition
+//                                     is what draws a flat line across downtime
+//                                     instead of a diagonal guess between two
+//                                     distant readings.
 function recordChartSnapshot() {
   if (channels.length === 0) return;
   const now = Date.now();
-  const nowStr = new Date(now).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const slot = hourBucket(now);
 
   if (!chartSnapshots.timestamps) chartSnapshots.timestamps = [];
+  if (!chartSnapshots.labels) chartSnapshots.labels = [];
 
-  chartSnapshots.labels.push(nowStr);
-  chartSnapshots.timestamps.push(now);
+  const lastSlot = chartSnapshots.timestamps.length
+    ? chartSnapshots.timestamps[chartSnapshots.timestamps.length - 1]
+    : null;
 
-  if(chartSnapshots.labels.length > 50) {
-    chartSnapshots.labels.shift();
-    chartSnapshots.timestamps.shift();
+  const overwriting = lastSlot === slot;
+
+  // Hours to add: the missed ones (flatline) plus the current one.
+  const newSlots = [];
+  if (!overwriting) {
+    if (lastSlot !== null) {
+      for (let t = lastSlot + HOUR_MS; t < slot; t += HOUR_MS) newSlots.push(t);
+    }
+    newSlots.push(slot);
   }
+
+  newSlots.forEach(t => {
+    chartSnapshots.timestamps.push(t);
+    chartSnapshots.labels.push(formatSnapshotLabel(t, 7));
+  });
 
   channels.forEach((ch, idx) => {
     if (!chartSnapshots.datasets[ch.id]) {
@@ -231,55 +253,98 @@ function recordChartSnapshot() {
         vphData: [],
         color: palette[idx % palette.length]
       };
-      while(chartSnapshots.datasets[ch.id].subsData.length < chartSnapshots.labels.length - 1) {
-        chartSnapshots.datasets[ch.id].subsData.push(null);
-        chartSnapshots.datasets[ch.id].viewsData.push(null);
-        chartSnapshots.datasets[ch.id].vphData.push(null);
+    }
+    const ds = chartSnapshots.datasets[ch.id];
+
+    // A channel added partway through gets nulls for the hours before it
+    // existed, so it starts where it was actually added rather than being
+    // stretched back across the whole history.
+    const targetLen = chartSnapshots.timestamps.length;
+    while (ds.subsData.length < targetLen - (overwriting ? 0 : newSlots.length)) {
+      ds.subsData.push(null);
+      ds.viewsData.push(null);
+      ds.vphData.push(null);
+    }
+
+    const lastReal = ds.subsData.length ? {
+      subs:  ds.subsData[ds.subsData.length - 1],
+      views: ds.viewsData[ds.viewsData.length - 1]
+    } : { subs: null, views: null };
+
+    if (!overwriting) {
+      // Flatline the skipped hours at the last known reading.
+      for (let i = 0; i < newSlots.length - 1; i++) {
+        ds.subsData.push(lastReal.subs);
+        ds.viewsData.push(lastReal.views);
+        ds.vphData.push(lastReal.views === null ? null : 0);
       }
     }
 
-    const ds = chartSnapshots.datasets[ch.id];
-    const subs = cache[ch.id]?.data?.subs;
+    const subs  = cache[ch.id]?.data?.subs;
     const views = cache[ch.id]?.data?.totalViews;
 
+    // VPH is derived from the delta against the most recent real (non-null,
+    // non-backfilled) views reading.
     let vph = null;
     if (views !== undefined && views !== null) {
-        let lastViews = null;
-        let lastTime = null;
-        for(let i = ds.viewsData.length - 1; i >= 0; i--) {
-            if (ds.viewsData[i] !== null) {
-                lastViews = ds.viewsData[i];
-                lastTime = chartSnapshots.timestamps[i];
-                break;
-            }
+      let lastViews = null, lastTime = null;
+      const searchEnd = overwriting ? ds.viewsData.length - 1 : ds.viewsData.length;
+      for (let i = searchEnd - 1; i >= 0; i--) {
+        if (ds.viewsData[i] !== null && ds.viewsData[i] !== undefined) {
+          lastViews = ds.viewsData[i];
+          lastTime = chartSnapshots.timestamps[i];
+          break;
         }
-        if (lastViews !== null && lastTime !== null) {
-            let hours = (now - lastTime) / 3600000;
-            if (hours > 0) {
-                vph = (views - lastViews) / hours;
-                vph = Math.max(0, vph);
-            }
-        }
+      }
+      if (lastViews !== null && lastTime !== null) {
+        const hours = (slot - lastTime) / HOUR_MS;
+        if (hours > 0) vph = Math.max(0, (views - lastViews) / hours);
+      }
     }
 
-    ds.subsData.push(subs !== undefined ? subs : null);
-    ds.viewsData.push(views !== undefined ? views : null);
-    ds.vphData.push(vph);
+    const subsVal  = subs  !== undefined ? subs  : null;
+    const viewsVal = views !== undefined ? views : null;
 
-    if(ds.subsData.length > 50) {
-       ds.subsData.shift();
-       ds.viewsData.shift();
-       ds.vphData.shift();
+    if (overwriting && ds.subsData.length === chartSnapshots.timestamps.length) {
+      const last = ds.subsData.length - 1;
+      ds.subsData[last]  = subsVal;
+      ds.viewsData[last] = viewsVal;
+      ds.vphData[last]   = vph;
+    } else {
+      ds.subsData.push(subsVal);
+      ds.viewsData.push(viewsVal);
+      ds.vphData.push(vph);
     }
 
     ds.label = cache[ch.id]?.data?.title || ch.addedAs;
   });
 
+  // Trim to the retention window.
+  const overflow = chartSnapshots.timestamps.length - CHART_MAX_POINTS;
+  if (overflow > 0) {
+    chartSnapshots.timestamps.splice(0, overflow);
+    chartSnapshots.labels.splice(0, overflow);
+    for (const id in chartSnapshots.datasets) {
+      const ds = chartSnapshots.datasets[id];
+      ds.subsData.splice(0, overflow);
+      ds.viewsData.splice(0, overflow);
+      ds.vphData.splice(0, overflow);
+    }
+  }
+
   saveChartSnapshots();
   if (typeof updateChart === 'function') updateChart();
 }
 
-setInterval(recordChartSnapshot, 3600000);
+// Fire at the top of each hour rather than an hour after page load, so points
+// from different sessions land on the same grid.
+(function scheduleHourlySnapshots(){
+  const msToNextHour = HOUR_MS - (Date.now() % HOUR_MS);
+  setTimeout(() => {
+    recordChartSnapshot();
+    setInterval(recordChartSnapshot, HOUR_MS);
+  }, msToNextHour + 1000);
+})();
 
 // --- Data fetch orchestration ---
 async function fetchAllDataFor(id, isCompetitor = false){
@@ -351,11 +416,11 @@ async function refreshAll(){
       return fetchAllDataFor(id, isCompOnly);
   }));
 
-  if (chartSnapshots.labels.length === 0 && channels.length > 0) {
-    recordChartSnapshot();
-  } else if (typeof updateChart === 'function') {
-    updateChart();
-  }
+  // Always record — recordChartSnapshot() buckets by hour, so this either
+  // fills the current hour's slot or updates it in place. This is what makes
+  // "every hour the page was open" get logged.
+  recordChartSnapshot();
+  if (typeof updateChart === 'function') updateChart();
 }
 
 // --- Lightweight per-card auto-refresh (subs/views/videos only) ---
