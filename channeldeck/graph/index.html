@@ -48,7 +48,12 @@
          <button class="primary" id="metricSubsBtn">Subscribers</button>
          <button class="ghost" id="metricViewsBtn">Views</button>
          <button class="ghost" id="resetZoomBtn" style="font-size: 11px; padding: 6px 12px;">Reset Zoom</button>
+         <button class="ghost" id="resetGraphBtn" style="font-size: 11px; padding: 6px 12px; color: var(--live); border-color: var(--live);">Reset Graph</button>
       </div>
+    </div>
+    <div style="display:flex; gap: 8px; justify-content: flex-end; width: 100%; align-items:center;">
+       <span style="font-size:11px; color:var(--muted); margin-right:2px;">Range</span>
+       <div id="rangeToggles" style="display:flex; gap:8px;"></div>
     </div>
     <div id="viewsSubToggles" style="display:none; gap: 8px; justify-content: flex-end; width: 100%;">
        <button class="primary" id="subMetricVphBtn" style="font-size: 11px; padding: 6px 12px;">VPH</button>
@@ -186,6 +191,17 @@
     <div class="modal-actions">
       <button class="ghost" id="addCancel">Cancel</button>
       <button class="primary" id="addConfirm">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="resetGraphOverlay" style="display:none;">
+  <div class="modal">
+    <h3>Reset graph history?</h3>
+    <p>This permanently deletes every recorded snapshot — all subscriber, views, and VPH history across every range. Your channels, notes, and settings are not affected. This can't be undone.</p>
+    <div class="modal-actions">
+      <button class="ghost" id="resetGraphCancel">Cancel</button>
+      <button class="primary" id="resetGraphConfirm" style="background: var(--live); border-color: var(--live);">Reset Graph</button>
     </div>
   </div>
 </div>
