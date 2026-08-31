@@ -24,6 +24,34 @@ const MILESTONES = [
 
 const palette = ['#34D6C4', '#F2B84B', '#FF4B3E', '#9b59b6', '#3498db', '#e67e22', '#2ecc71', '#e74c3c'];
 
+// --- Chart history ---
+// Snapshots are bucketed to the top of each hour. One point per hour, kept for
+// CHART_RETENTION_DAYS so the 90d scale always has something to draw. Hours in
+// which no Channel Deck page was open get backfilled with the last known value
+// on the next snapshot, which is what produces the flat line across downtime.
+const HOUR_MS = 3600000;
+const CHART_RETENTION_DAYS = 90;
+const CHART_MAX_POINTS = CHART_RETENTION_DAYS * 24; // 2160 hourly slots
+
+const GRAPH_RANGES = [
+  { days: 7,  label: '7d'  },
+  { days: 28, label: '28d' },
+  { days: 90, label: '90d' }
+];
+
+function hourBucket(ts){ return Math.floor(ts / HOUR_MS) * HOUR_MS; }
+
+// Label text depends on how wide the visible range is — an hour-of-day stamp is
+// useless across 90 days, and a bare date is useless across 7.
+function formatSnapshotLabel(ts, rangeDays){
+  const d = new Date(ts);
+  if (rangeDays <= 7) {
+    return d.toLocaleDateString([], {month:'numeric', day:'numeric'}) + ' ' +
+           d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+  return d.toLocaleDateString([], {month:'numeric', day:'numeric'});
+}
+
 let appSettings = {
   volume: 100,
   muted: false,
@@ -89,6 +117,44 @@ function hexToRgb(hex) {
     g: parseInt(result[2], 16),
     b: parseInt(result[3], 16)
   } : {r:52, g:214, b:196};
+}
+
+// Collapses existing history onto the hourly grid. Older versions of Channel
+// Deck recorded snapshots at arbitrary times (every refresh, on load, etc), so
+// stored history can contain several points inside the same hour. Keeping the
+// last point per hour makes the saved series line up with what recordChart-
+// Snapshot() writes from now on, so the two never interleave out of order.
+function normalizeChartSnapshots(){
+  if (!chartSnapshots.timestamps || !chartSnapshots.timestamps.length) return;
+
+  const slotIndex = new Map(); // hour bucket -> index in the rebuilt arrays
+  const buckets = [];
+  chartSnapshots.timestamps.forEach((ts, i) => {
+    const b = hourBucket(ts);
+    if (slotIndex.has(b)) {
+      buckets[slotIndex.get(b)] = i; // later point in the same hour wins
+    } else {
+      slotIndex.set(b, buckets.length);
+      buckets.push(i);
+    }
+  });
+
+  const hours = [...slotIndex.keys()];
+  chartSnapshots.timestamps = hours;
+  chartSnapshots.labels = hours.map(ts => formatSnapshotLabel(ts, 7));
+
+  for (const id in chartSnapshots.datasets) {
+    const ds = chartSnapshots.datasets[id];
+    ds.subsData  = buckets.map(i => ds.subsData ? ds.subsData[i]  ?? null : null);
+    ds.viewsData = buckets.map(i => ds.viewsData ? ds.viewsData[i] ?? null : null);
+    ds.vphData   = buckets.map(i => ds.vphData ? ds.vphData[i]   ?? null : null);
+  }
+}
+
+// Wipes all recorded graph history. Used by the Reset Graph button.
+function clearChartSnapshots(){
+  chartSnapshots = { labels: [], timestamps: [], datasets: {} };
+  saveChartSnapshots();
 }
 
 // --- Persistence ---
@@ -192,7 +258,12 @@ function loadState(){
          chartSnapshots.timestamps = chartSnapshots.labels.map(() => now);
       }
 
-      const validIndices = chartSnapshots.timestamps.map((ts, i) => now - ts < ONE_DAY ? i : -1).filter(i => i !== -1);
+      // Retain 90 days of hourly history (was 1 day) so the 7d/28d/90d scales
+      // all have data to draw.
+      const retentionCutoff = now - CHART_RETENTION_DAYS * 86400000;
+      const validIndices = chartSnapshots.timestamps
+        .map((ts, i) => ts >= retentionCutoff ? i : -1)
+        .filter(i => i !== -1);
 
       chartSnapshots.timestamps = validIndices.map(i => chartSnapshots.timestamps[i]);
       chartSnapshots.labels = validIndices.map(i => chartSnapshots.labels[i]);
@@ -219,6 +290,8 @@ function loadState(){
              ds.vphData = validIndices.map(i => ds.vphData[i]);
          }
       }
+
+      normalizeChartSnapshots();
     }
   } catch(e){}
 
