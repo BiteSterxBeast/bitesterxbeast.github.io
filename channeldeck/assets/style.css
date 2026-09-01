@@ -1056,6 +1056,8 @@ input[type=range]::-moz-range-thumb {
 .search-meta .badge.short{color:var(--amber); border-color:rgba(242,184,75,0.4);}
 .search-meta .badge.long{color:var(--teal); border-color:rgba(52,214,196,0.4);}
 .search-meta .badge.live{color:var(--live); border-color:rgba(255,75,62,0.4);}
+/* Classified by duration alone because orientation wasn't available. */
+.search-meta .badge.guessed{border-style:dashed; opacity:0.75;}
 .search-actions{flex-shrink:0; align-self:center;}
 .search-track-btn{padding:7px 12px; font-size:12px; white-space:nowrap;}
 .search-track-btn:disabled{opacity:0.45; cursor:default;}

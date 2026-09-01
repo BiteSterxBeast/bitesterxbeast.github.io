@@ -189,6 +189,18 @@
 
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
+        <span class="v">V0.17</span>
+        <span class="d">August 31, 2026</span>
+      </div>
+      <ul>
+        <li>Fixed the Shorts filter pulling in long-form videos. Shorts were being identified by duration alone, so any regular upload under 3 minutes was wrongly counted as a Short.</li>
+        <li>Shorts are now detected by duration <em>and</em> orientation: a video has to be under 3 minutes <em>and</em> vertical (or square) to count. A two-minute landscape upload is now correctly long-form.</li>
+        <li>Search results now hover-explain how each video was classified, and any result classified without orientation data is marked with a dashed badge and a question mark.</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
         <span class="v">V0.16</span>
         <span class="d">August 31, 2026</span>
       </div>

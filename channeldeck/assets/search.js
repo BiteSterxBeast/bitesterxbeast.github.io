@@ -21,6 +21,11 @@ const REVEAL_SIZE = 10;    // results revealed per "Show me more"
 const FETCH_SIZE  = 50;    // results pulled from the API per paid search
 const SHORT_MAX_SECONDS = 180; // YouTube Shorts cap out at 3 minutes
 
+// Width used when asking the API for the embed player markup. The returned
+// height is derived from the video's real aspect ratio, which is how
+// orientation gets detected — see classifyShort() below.
+const PLAYER_PROBE_WIDTH = 500;
+
 // --- DOM refs ---
 const searchInput      = document.getElementById('searchInput');
 const tagInput         = document.getElementById('tagInput');
@@ -192,6 +197,60 @@ function clearFiltersDirty(){
 }
 
 // --- Helpers ---
+// The Data API has no "this is a Short" flag, so duration alone can't tell a
+// Short from a regular two-minute upload — that's what made short long-form
+// videos leak into the Shorts filter. Orientation is the missing signal:
+// Shorts are vertical (or square), regular uploads are landscape.
+//
+// Asking videos.list for the `player` part returns the embed iframe markup,
+// and its width/height reflect the video's actual aspect ratio rather than a
+// fixed 16:9 box. Parsing those two numbers gives us orientation for free —
+// videos.list still costs a flat 1 unit no matter how many parts are requested.
+function parsePlayerAspect(player){
+  if (!player || !player.embedHtml) return null;
+  const w = /width\s*=\s*["'](\d+)["']/i.exec(player.embedHtml);
+  const h = /height\s*=\s*["'](\d+)["']/i.exec(player.embedHtml);
+  if (!w || !h) return null;
+  const width = Number(w[1]), height = Number(h[1]);
+  if (!width || !height) return null;
+  return { width, height };
+}
+
+// Returns true only when a video is genuinely a Short: short enough AND
+// vertical. A 2-minute landscape video now correctly reads as long-form.
+//
+// If the aspect ratio is unavailable for some reason, this falls back to the
+// old duration-only guess rather than dropping the video entirely — but that
+// path should effectively never run, since every search requests the player
+// part. `aspectKnown` records which path was taken so the UI can be honest
+// about it.
+function classifyShort(duration, aspect){
+  if (!duration || duration > SHORT_MAX_SECONDS) {
+    return { isShort: false, aspectKnown: !!aspect };
+  }
+  if (aspect) {
+    // Portrait or square counts as a Short; landscape does not.
+    return { isShort: aspect.height >= aspect.width, aspectKnown: true };
+  }
+  return { isShort: true, aspectKnown: false };
+}
+
+// Spells out why a video landed in the bucket it did, so a wrong call is
+// possible to spot rather than being a black box.
+function badgeTitle(r){
+  const dur = fmtDuration(r.duration);
+  if (!r.aspectKnown) {
+    return `Orientation unavailable — classified by duration alone (${dur}), so this one may be wrong.`;
+  }
+  const orient = r.aspect
+    ? (r.aspect.height > r.aspect.width ? 'vertical'
+      : r.aspect.height === r.aspect.width ? 'square' : 'landscape')
+    : 'unknown';
+  if (r.isShort) return `Short: ${dur} and ${orient}.`;
+  if (r.duration > SHORT_MAX_SECONDS) return `Long-form: ${dur}, over the 3-minute Shorts limit.`;
+  return `Long-form: ${dur} but ${orient}, so it is a regular upload rather than a Short.`;
+}
+
 function parseISODuration(iso){
   const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso || '');
   if (!m) return 0;
@@ -289,7 +348,7 @@ function renderResults(){
             <span class="num">${fmt(r.likes)} likes</span>
             <span class="num">${fmt(r.comments)} comments</span>
             <span>${escapeHTML(timeAgo(r.publishedAt))}</span>
-            <span class="badge ${r.isShort ? 'short' : 'long'}">${r.isShort ? 'Short' : 'Long-form'}</span>
+            <span class="badge ${r.isShort ? 'short' : 'long'}${r.aspectKnown ? '' : ' guessed'}" title="${escapeHTML(badgeTitle(r))}">${r.isShort ? 'Short' : 'Long-form'}${r.aspectKnown ? '' : '?'}</span>
             ${r.isLive ? '<span class="badge live">Live</span>' : ''}
           </div>
         </div>
@@ -403,12 +462,14 @@ async function executeSearch(append){
 
     if (ids.length) {
       const det = await fetchWithFallback(key =>
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids.join(',')}&key=${key}`);
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,player&id=${ids.join(',')}&maxWidth=${PLAYER_PROBE_WIDTH}&key=${key}`);
       const fresh = (det.items || []).map(v => {
         const t = v.snippet.thumbnails || {};
         const thumb = (t.maxres && t.maxres.url) || (t.high && t.high.url)
                    || (t.medium && t.medium.url) || (t.default && t.default.url) || '';
         const duration = parseISODuration(v.contentDetails && v.contentDetails.duration);
+        const aspect = parsePlayerAspect(v.player);
+        const cls = classifyShort(duration, aspect);
         return {
           id: v.id,
           title: v.snippet.title,
@@ -417,7 +478,9 @@ async function executeSearch(append){
           publishedAt: v.snippet.publishedAt,
           thumb,
           duration,
-          isShort: duration > 0 && duration <= SHORT_MAX_SECONDS,
+          isShort: cls.isShort,
+          aspectKnown: cls.aspectKnown,
+          aspect,
           isLive: v.snippet.liveBroadcastContent && v.snippet.liveBroadcastContent !== 'none',
           views: Number(v.statistics.viewCount || 0),
           likes: v.statistics.likeCount === undefined ? null : Number(v.statistics.likeCount),

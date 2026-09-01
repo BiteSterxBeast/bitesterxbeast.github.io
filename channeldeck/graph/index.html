@@ -173,7 +173,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.16</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.17</span>
       <button class="primary" id="settingsClose">Close & Save</button>
     </div>
   </div>
@@ -185,7 +185,19 @@
     <h3 style="margin-bottom: 20px;">Changelog</h3>
     <div style="margin-bottom: 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.16</h4>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.17</h4>
+        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 31, 2026</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Fixed the Shorts filter pulling in long-form videos. Shorts were being identified by duration alone, so any regular upload under 3 minutes was wrongly counted as a Short.</li>
+        <li>Shorts are now detected by duration <em>and</em> orientation: a video has to be under 3 minutes <em>and</em> vertical (or square) to count. A two-minute landscape upload is now correctly long-form.</li>
+        <li>Search results now hover-explain how each video was classified, and any result classified without orientation data is marked with a dashed badge and a question mark.</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.16</h4>
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 31, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
