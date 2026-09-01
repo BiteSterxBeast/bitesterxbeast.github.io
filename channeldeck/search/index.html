@@ -47,12 +47,23 @@
     </div>
 
     <div class="search-row">
-      <div class="tag-field">
+      <div class="mode-switch" id="modeSwitch" role="group" aria-label="Second bar mode">
+        <button type="button" class="mode-opt active" data-mode="tags">Tags</button>
+        <button type="button" class="mode-opt" data-mode="creators">Creators</button>
+      </div>
+    </div>
+
+    <div class="search-row">
+      <div class="tag-field" id="tagField">
         <div class="tag-chips" id="tagChips" style="display:none;"></div>
         <input type="text" id="tagInput" class="search-field tag-input" placeholder="Tags — press Enter after each. Prefix with “-” to exclude." autocomplete="off" spellcheck="false">
       </div>
       <button class="ghost search-go" id="filtersToggle">Filters ▾</button>
     </div>
+
+    <div class="mode-hint" id="modeHint"></div>
+
+    <div class="creator-profile" id="creatorProfile" style="display:none;"></div>
 
     <div class="filters-panel" id="filtersPanel" style="display:none;">
       <div class="filter-cell">
@@ -293,7 +304,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.17</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.18</span>
       <button class="primary" id="settingsClose">Close &amp; Save</button>
     </div>
   </div>
@@ -305,7 +316,24 @@
     <h3 style="margin-bottom: 20px;">Changelog</h3>
     <div style="margin-bottom: 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.17</h4>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.18</h4>
+        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">September 1, 2026</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Added a Tags / Creators switch to the second search bar.</li>
+        <li>Creators mode takes up to three creators and finds other channels making similar content. Give it an @handle, channel URL, or name.</li>
+        <li>It samples each creator’s 15 most recent uploads and builds a style profile from their video tags, titles, and channel keywords, then searches on that profile and constrains it to the category they actually publish in.</li>
+        <li>Videos from the seed creators themselves are filtered out, so results are only other people making that kind of content.</li>
+        <li>With more than one creator, only traits they <em>share</em> are used, so one channel’s quirks can’t skew the results. One creator at a time gives the sharpest profile.</li>
+        <li>The derived profile is shown on screen, so it’s clear what the search actually ran on rather than being a black box.</li>
+        <li>Creator chips warn when a bare name is used instead of an @handle or URL, since a name has no cheap lookup and costs about 100 extra quota units to resolve.</li>
+        <li>The profile is reused while paging, so "Show me more" never pays to re-read the creators’ uploads.</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.17</h4>
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 31, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">

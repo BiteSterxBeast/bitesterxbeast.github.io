@@ -1167,3 +1167,100 @@ input[type=range]::-moz-range-thumb {
   color:var(--dim);
   line-height:1.6;
 }
+
+/* ============================================================
+   Search: Tags / Creators mode switch
+   ============================================================ */
+
+.mode-switch{
+  display:inline-flex;
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:3px;
+  gap:3px;
+}
+.mode-opt{
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  font-size:12.5px;
+  font-weight:600;
+  padding:6px 16px;
+  border-radius:7px;
+  cursor:pointer;
+}
+.mode-opt:hover{background:rgba(255,255,255,0.05); border:none; color:var(--text);}
+.mode-opt.active{background:var(--teal); color:#04211D;}
+.mode-opt.active:hover{background:#4be2d1;}
+
+.mode-hint{
+  margin-top:10px;
+  font-size:11.5px;
+  color:var(--dim);
+  line-height:1.6;
+}
+.mode-hint b{color:var(--muted);}
+
+.tag-field.creators-mode{border-color:rgba(155,89,182,0.45);}
+.tag-field.creators-mode:focus-within{outline-color:#9b59b6;}
+
+.tag-chip.creator{
+  background:rgba(155,89,182,0.14);
+  border-color:rgba(155,89,182,0.45);
+  color:#c48ede;
+}
+/* A bare name has no cheap lookup, so it costs ~100 units to resolve. */
+.tag-chip.creator.pricey{
+  border-style:dashed;
+  background:rgba(242,184,75,0.12);
+  border-color:rgba(242,184,75,0.45);
+  color:var(--amber);
+}
+
+/* Derived style profile */
+.creator-profile{
+  margin-top:14px;
+  padding:12px 14px;
+  border-radius:10px;
+  background:rgba(155,89,182,0.07);
+  border:1px solid rgba(155,89,182,0.3);
+}
+.creator-profile-head{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--text);
+  margin-bottom:9px;
+}
+.creator-profile-sub{
+  font-weight:400;
+  color:var(--dim);
+  font-size:11px;
+  margin-left:8px;
+}
+.creator-profile-terms{display:flex; flex-wrap:wrap; gap:6px;}
+.profile-term{
+  font-size:11.5px;
+  font-weight:600;
+  color:#c48ede;
+  background:rgba(155,89,182,0.15);
+  border:1px solid rgba(155,89,182,0.35);
+  border-radius:20px;
+  padding:3px 11px;
+}
+.creator-profile-note{
+  margin-top:10px;
+  font-size:11px;
+  color:var(--dim);
+  line-height:1.55;
+}
+.creator-profile-warn{
+  margin-top:10px;
+  padding:8px 11px;
+  border-radius:7px;
+  background:rgba(242,184,75,0.1);
+  border:1px solid rgba(242,184,75,0.35);
+  color:var(--amber);
+  font-size:11.5px;
+  line-height:1.55;
+}

@@ -26,6 +26,24 @@ const SHORT_MAX_SECONDS = 180; // YouTube Shorts cap out at 3 minutes
 // orientation gets detected — see classifyShort() below.
 const PLAYER_PROBE_WIDTH = 500;
 
+// --- Creators mode ---
+// Up to three seed creators. One is the sweet spot: the profile stays tight and
+// recognisably that creator's niche. Adding more broadens it, because a term
+// only survives if it's shared, so three very different creators produce a
+// vague profile rather than a richer one.
+const MAX_CREATORS = 3;
+const PROFILE_VIDEOS_PER_CREATOR = 15; // recent uploads sampled per creator
+const PROFILE_TERM_COUNT = 5;          // derived terms fed into the query
+
+// Words that say nothing about a creator's niche. Without this the profile
+// fills up with "the", "video", "new", "official" and matches everything.
+const PROFILE_STOPWORDS = new Set(('a об the and or but if then than that this these those there here what which who whom whose when where why how all any both each few more most other some such no nor not only own same so too very can will just don should now i me my we our you your he him his she her it its they them their am is are was were be been being have has had having do does did doing would could shall may might must of at by for with about against between into through during before after above below to from up down in out on off over under again further once video videos new official full hd 4k part ep episode vs feat ft featuring the best top get make made makes making how why what when who does did you your my our this that with without like just really very more most all every some any thing things stuff really actually literally basically going gonna want wanted need needed let lets going im ive dont doesnt didnt cant wont isnt arent wasnt werent one two three first last next final live stream vlog shorts short subscribe channel watch watching').split(' '));
+
+let searchMode = 'tags';       // 'tags' | 'creators'
+let searchCreators = [];       // raw strings the user typed
+let creatorResolveCache = {};  // raw -> {id, title} (avoids paying to resolve twice)
+let creatorProfile = null;     // derived style profile, reused while paging
+
 // --- DOM refs ---
 const searchInput      = document.getElementById('searchInput');
 const tagInput         = document.getElementById('tagInput');
@@ -42,6 +60,10 @@ const filtersPanel     = document.getElementById('filtersPanel');
 const filtersDirtyNote = document.getElementById('filtersDirtyNote');
 const quotaMeter       = document.getElementById('quotaMeter');
 const resetFiltersBtn  = document.getElementById('resetFiltersBtn');
+const modeSwitch       = document.getElementById('modeSwitch');
+const modeHint         = document.getElementById('modeHint');
+const tagField         = document.getElementById('tagField');
+const creatorProfileEl = document.getElementById('creatorProfile');
 
 const fOrder    = document.getElementById('fOrder');
 const fTime     = document.getElementById('fTime');
@@ -87,6 +109,12 @@ function saveSearchFilters(){
 function saveSearchTags(){
   try { localStorage.setItem('channelDeck_searchTags', JSON.stringify(searchTags)); } catch(e){}
 }
+function saveSearchCreators(){
+  try { localStorage.setItem('channelDeck_searchCreators', JSON.stringify(searchCreators)); } catch(e){}
+}
+function saveSearchMode(){
+  try { localStorage.setItem('channelDeck_searchMode', searchMode); } catch(e){}
+}
 function loadSearchState(){
   try {
     const f = localStorage.getItem('channelDeck_searchFilters');
@@ -101,36 +129,114 @@ function loadSearchState(){
     }
   } catch(e){}
 
+  try {
+    const c = localStorage.getItem('channelDeck_searchCreators');
+    if (c) {
+      const parsed = JSON.parse(c);
+      if (Array.isArray(parsed)) searchCreators = parsed.filter(x => typeof x === 'string').slice(0, MAX_CREATORS);
+    }
+  } catch(e){}
+
+  try {
+    const m = localStorage.getItem('channelDeck_searchMode');
+    if (m === 'tags' || m === 'creators') searchMode = m;
+  } catch(e){}
+
 }
 
 // --- Tag chips ---
 // Tags are just query fragments. A tag typed with a leading "-" becomes an
 // exclusion, and a tag containing spaces is quoted so YouTube treats it as one
 // exact phrase instead of loose words.
+// The second bar renders either tags or creators depending on the mode switch.
+// Both lists are kept in storage, so flipping between modes doesn't lose what
+// was typed in the other one.
 function renderTags(){
+  const items = searchMode === 'creators' ? searchCreators : searchTags;
   tagChips.innerHTML = '';
-  searchTags.forEach((tag, i) => {
+
+  items.forEach((val, i) => {
     const chip = document.createElement('span');
-    const isExclude = tag.startsWith('-');
-    chip.className = 'tag-chip' + (isExclude ? ' exclude' : '');
-    chip.innerHTML = `<span>${escapeHTML(tag)}</span><button class="tag-chip-x" data-tag-remove="${i}" title="Remove tag" aria-label="Remove tag ${escapeHTML(tag)}">✕</button>`;
+    if (searchMode === 'creators') {
+      const pricey = !isCheapCreatorLookup(val);
+      chip.className = 'tag-chip creator' + (pricey ? ' pricey' : '');
+      chip.title = pricey
+        ? 'A bare name has no cheap lookup, so resolving this costs about 100 extra quota units. An @handle or channel URL costs 1.'
+        : 'Resolves for 1 quota unit.';
+    } else {
+      chip.className = 'tag-chip' + (val.startsWith('-') ? ' exclude' : '');
+    }
+    chip.innerHTML = `<span>${escapeHTML(val)}</span><button class="tag-chip-x" data-tag-remove="${i}" title="Remove" aria-label="Remove ${escapeHTML(val)}">✕</button>`;
     tagChips.appendChild(chip);
   });
-  tagChips.style.display = searchTags.length ? 'flex' : 'none';
+
+  tagChips.style.display = items.length ? 'flex' : 'none';
 
   tagChips.querySelectorAll('[data-tag-remove]').forEach(btn => {
     btn.onclick = () => {
-      searchTags.splice(Number(btn.dataset.tagRemove), 1);
-      saveSearchTags();
+      const idx = Number(btn.dataset.tagRemove);
+      if (searchMode === 'creators') {
+        searchCreators.splice(idx, 1);
+        saveSearchCreators();
+        creatorProfile = null;           // profile no longer matches the seeds
+        renderCreatorProfile();
+      } else {
+        searchTags.splice(idx, 1);
+        saveSearchTags();
+      }
       renderTags();
+      renderModeUI();
       markFiltersDirty();
     };
   });
 }
 
+// Placeholder, hint text and the input's disabled state all follow the mode.
+function renderModeUI(){
+  modeSwitch.querySelectorAll('.mode-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === searchMode);
+  });
+  tagField.classList.toggle('creators-mode', searchMode === 'creators');
+
+  if (searchMode === 'creators') {
+    const full = searchCreators.length >= MAX_CREATORS;
+    tagInput.placeholder = full
+      ? `Maximum ${MAX_CREATORS} creators — remove one to add another.`
+      : '@handle, channel URL or name — press Enter after each.';
+    tagInput.disabled = full;
+    modeHint.innerHTML = `Finds other creators making content like these. One creator gives the sharpest results; adding more widens the net, since only traits they <b>share</b> survive. Videos from the seeds themselves are excluded. Use an @handle or URL — a bare name costs ~100 extra units to look up.`;
+  } else {
+    tagInput.placeholder = 'Tags — press Enter after each. Prefix with “-” to exclude.';
+    tagInput.disabled = false;
+    modeHint.innerHTML = `Tags narrow the search term above. Prefix a tag with <b>-</b> to exclude it; multi-word tags are matched as exact phrases.`;
+  }
+  modeHint.style.display = 'block';
+}
+
 function addTagsFromInput(){
   const raw = tagInput.value;
   if (!raw.trim()) return;
+
+  if (searchMode === 'creators') {
+    let rejected = false;
+    raw.split(',').forEach(part => {
+      const name = part.trim();
+      if (!name) return;
+      if (searchCreators.some(c => c.toLowerCase() === name.toLowerCase())) return;
+      if (searchCreators.length >= MAX_CREATORS) { rejected = true; return; }
+      searchCreators.push(name);
+    });
+    tagInput.value = '';
+    saveSearchCreators();
+    creatorProfile = null;
+    renderCreatorProfile();
+    renderTags();
+    renderModeUI();
+    markFiltersDirty();
+    if (rejected) setStatus(`You can search up to ${MAX_CREATORS} creators at once. Remove one to add another.`, 'error');
+    return;
+  }
+
   raw.split(',').forEach(part => {
     const tag = part.trim();
     if (!tag) return;
@@ -149,6 +255,15 @@ function buildQuery(){
   const parts = [];
   const base = searchInput.value.trim();
   if (base) parts.push(base);
+
+  // In Creators mode the query comes from the derived profile rather than
+  // typed tags. Anything in the main box still applies, so it can be used to
+  // narrow "creators like X" down to a specific subject.
+  if (searchMode === 'creators') {
+    if (creatorProfile) parts.push(...creatorProfile.terms);
+    return parts.join(' ').trim();
+  }
+
   searchTags.forEach(tag => {
     if (tag.startsWith('-')) {
       const body = tag.slice(1).trim();
@@ -159,6 +274,231 @@ function buildQuery(){
     }
   });
   return parts.join(' ').trim();
+}
+
+// --- Creators mode: resolution and style profiling ---
+
+// Resolves a typed creator to a channel id. Handles and URLs resolve via
+// forHandle/forUsername for 1 unit. A bare name has no cheap lookup and falls
+// through to search.list, which costs 100 — so the UI warns about that rather
+// than quietly spending it.
+async function resolveCreator(raw){
+  const key = raw.trim().toLowerCase();
+  if (creatorResolveCache[key]) return creatorResolveCache[key];
+
+  const parsed = extractHandleOrId(raw);
+  const id = await resolveChannelId(parsed);
+  const core = await fetchChannelCore(id);
+  const entry = { id, title: core.snippet.title, thumb: (core.snippet.thumbnails || {}).default?.url || '' };
+  creatorResolveCache[key] = entry;
+  return entry;
+}
+
+// True when a typed creator can be looked up cheaply. A bare name can't.
+function isCheapCreatorLookup(raw){
+  const s = raw.trim();
+  return s.startsWith('@') || /youtube\.com\//i.test(s) || /^UC[\w-]{10,}$/.test(s);
+}
+
+function normaliseTerm(s){
+  return (s || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s'-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function usefulTerm(term, banned){
+  if (term.length < 3 || term.length > 24) return false;
+  if (PROFILE_STOPWORDS.has(term)) return false;
+  if (/^\d+$/.test(term)) return false;
+  if (banned.has(term)) return false;
+  return true;
+}
+
+// Builds a "what kind of content is this" profile from the seed creators'
+// recent uploads.
+//
+// The signal comes mostly from each video's own tags, which are the creator's
+// own keywords and far more descriptive than title words — so tags are weighted
+// heavier. Terms are counted once per video so one keyword-stuffed upload can't
+// dominate, and when several creators are seeded a term's score is multiplied
+// by how many of them use it, which is what surfaces the shared niche instead
+// of any single channel's quirks.
+async function buildCreatorProfile(){
+  const resolved = [];
+  for (const raw of searchCreators) {
+    setStatus(`Looking up ${escapeHTML(raw)}…`, 'busy');
+    resolved.push(await resolveCreator(raw));
+  }
+  if (!resolved.length) throw new Error('Add at least one creator first.');
+
+  setStatus('Reading recent uploads to model their content…', 'busy');
+
+  // One batched channels.list for every seed at once — 1 unit total.
+  const ids = resolved.map(r => r.id);
+  const chData = await fetchWithFallback(key =>
+    `https://www.googleapis.com/youtube/v3/channels?part=contentDetails,brandingSettings&id=${ids.join(',')}&key=${key}`);
+
+  const uploadsByChannel = {};
+  (chData.items || []).forEach(c => {
+    const up = c.contentDetails && c.contentDetails.relatedPlaylists && c.contentDetails.relatedPlaylists.uploads;
+    if (up) uploadsByChannel[c.id] = up;
+  });
+
+  // Channel-level keywords, when the creator has set any.
+  const channelKeywords = [];
+  (chData.items || []).forEach(c => {
+    const kw = c.brandingSettings && c.brandingSettings.channel && c.brandingSettings.channel.keywords;
+    if (kw) {
+      (kw.match(/"[^"]+"|\S+/g) || []).forEach(k => channelKeywords.push({
+        channelId: c.id, term: normaliseTerm(k.replace(/"/g, ''))
+      }));
+    }
+  });
+
+  // Recent uploads per creator — 1 unit each.
+  const videoIdsByChannel = {};
+  for (const r of resolved) {
+    const playlist = uploadsByChannel[r.id];
+    if (!playlist) { videoIdsByChannel[r.id] = []; continue; }
+    const pl = await fetchWithFallback(key =>
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${playlist}&maxResults=${PROFILE_VIDEOS_PER_CREATOR}&key=${key}`);
+    videoIdsByChannel[r.id] = (pl.items || [])
+      .map(i => i.contentDetails && i.contentDetails.videoId).filter(Boolean);
+  }
+
+  // One batched videos.list for every sampled video — 1 unit per 50.
+  const allVideoIds = Object.values(videoIdsByChannel).flat();
+  const videos = [];
+  for (let i = 0; i < allVideoIds.length; i += 50) {
+    const chunk = allVideoIds.slice(i, i + 50);
+    if (!chunk.length) break;
+    const vd = await fetchWithFallback(key =>
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${chunk.join(',')}&key=${key}`);
+    (vd.items || []).forEach(v => videos.push(v));
+  }
+
+  // Don't let the creators' own names become the search terms — that would just
+  // find them again rather than finding creators like them.
+  const banned = new Set();
+  resolved.forEach(r => {
+    normaliseTerm(r.title).split(' ').forEach(w => { if (w) banned.add(w); });
+  });
+  searchCreators.forEach(raw => {
+    normaliseTerm(raw.replace(/^@/, '')).split(' ').forEach(w => { if (w) banned.add(w); });
+  });
+
+  const scores = {};                 // term -> weighted score
+  const creatorsUsing = {};          // term -> Set of channel ids
+  const categoryCount = {};
+
+  function add(term, weight, channelId){
+    if (!usefulTerm(term, banned)) return;
+    scores[term] = (scores[term] || 0) + weight;
+    (creatorsUsing[term] = creatorsUsing[term] || new Set()).add(channelId);
+  }
+
+  videos.forEach(v => {
+    const cid = v.snippet.channelId;
+    if (v.snippet.categoryId) {
+      categoryCount[v.snippet.categoryId] = (categoryCount[v.snippet.categoryId] || 0) + 1;
+    }
+    // Counted once per video so a single keyword-stuffed upload can't dominate.
+    const seen = new Set();
+    (v.snippet.tags || []).forEach(tag => {
+      const term = normaliseTerm(tag);
+      if (!term || seen.has(term)) return;
+      seen.add(term);
+      add(term, 3, cid);
+    });
+    normaliseTerm(v.snippet.title).split(' ').forEach(w => {
+      if (!w || seen.has(w)) return;
+      seen.add(w);
+      add(w, 1, cid);
+    });
+  });
+
+  channelKeywords.forEach(k => { if (k.term) add(k.term, 2, k.channelId); });
+
+  // When several creators are seeded, the interesting terms are the ones they
+  // have in common — that's the shared niche. A term only one of them uses is
+  // that channel's own quirk and would drag the search toward them specifically
+  // rather than toward the style, so shared terms always outrank private ones.
+  // Private terms are still kept as filler in case there aren't enough shared
+  // ones to fill the profile.
+  const minCreators = resolved.length > 1 ? 2 : 1;
+  const ranked = Object.keys(scores)
+    .map(term => ({
+      term,
+      shared: creatorsUsing[term].size >= minCreators,
+      score: scores[term] * creatorsUsing[term].size
+    }))
+    .sort((a, b) => (b.shared - a.shared) || (b.score - a.score));
+
+  // With multiple creators, private terms are dropped outright rather than
+  // used as filler. A short profile of genuinely shared traits beats a full one
+  // padded with a single channel's quirks — padding is exactly what would pull
+  // the results back toward that one creator. The only exception is seeds with
+  // nothing at all in common, where falling back beats returning nothing.
+  const shared = ranked.filter(r => r.shared);
+  const sharedOnly = minCreators === 1 || shared.length > 0;
+  const candidates = shared.length ? shared : ranked;
+
+  // Prefer descriptive multi-word phrases over single words.
+  const byScore = (a, b) => b.score - a.score;
+  const phrases = candidates.filter(r => r.term.includes(' ')).sort(byScore);
+  const singles = candidates.filter(r => !r.term.includes(' ')).sort(byScore);
+
+  const picked = [];
+  const usedWords = new Set();
+  [...phrases, ...singles].forEach(r => {
+    if (picked.length >= PROFILE_TERM_COUNT) return;
+    // Skip a term whose words are already covered, to avoid near-duplicates.
+    const words = r.term.split(' ');
+    if (words.every(w => usedWords.has(w))) return;
+    words.forEach(w => usedWords.add(w));
+    picked.push(r.term);
+  });
+
+  let categoryId = null, best = 0;
+  for (const c in categoryCount) {
+    if (categoryCount[c] > best) { best = categoryCount[c]; categoryId = c; }
+  }
+
+  if (!picked.length) {
+    throw new Error('Could not model these creators — their recent uploads had too little descriptive text. Try a different creator, or use Tags mode.');
+  }
+
+  return {
+    creators: resolved,
+    seedIds: new Set(resolved.map(r => r.id)),
+    terms: picked,
+    categoryId,
+    sampled: videos.length,
+    // False when the seeds had nothing in common and the profile had to fall
+    // back to traits only some of them share.
+    sharedOnly: minCreators === 1 ? true : sharedOnly
+  };
+}
+
+function renderCreatorProfile(){
+  if (!creatorProfileEl) return;
+  if (searchMode !== 'creators' || !creatorProfile) {
+    creatorProfileEl.style.display = 'none';
+    return;
+  }
+  creatorProfileEl.style.display = 'block';
+  creatorProfileEl.innerHTML = `
+    <div class="creator-profile-head">Modelled on ${creatorProfile.creators.map(c => escapeHTML(c.title)).join(', ')}
+      <span class="creator-profile-sub">${creatorProfile.sampled} recent uploads sampled</span>
+    </div>
+    <div class="creator-profile-terms">
+      ${creatorProfile.terms.map(term => `<span class="profile-term">${escapeHTML(term)}</span>`).join('')}
+    </div>
+    ${creatorProfile.sharedOnly === false ? '<div class="creator-profile-warn">These creators had little in common, so the profile fell back to traits only some of them share. One creator at a time usually gives sharper results.</div>' : ''}
+    <div class="creator-profile-note">These are the traits pulled from their uploads and used as the search. Videos from the seed creators themselves are filtered out, so what's left is other creators making similar content.</div>
+  `;
 }
 
 // --- Filters ---
@@ -294,6 +634,9 @@ function passesLocalFilters(r){
   if (searchFilters.type === 'long'  && r.isShort) return false;
   if (searchFilters.minViews && r.views < searchFilters.minViews) return false;
   if (searchFilters.noLive !== false && r.isLive) return false;
+  // The whole point of Creators mode is finding *other* people making similar
+  // content, so the seed creators' own uploads are dropped.
+  if (searchMode === 'creators' && creatorProfile && creatorProfile.seedIds.has(r.channelId)) return false;
   return true;
 }
 
@@ -414,9 +757,8 @@ function setStatus(html, tone){
 async function executeSearch(append){
   if (searching) return;
 
-  const q = buildQuery();
-  if (!q) {
-    setStatus('Type a search term, or add at least one tag, before searching.', 'error');
+  if (searchMode === 'creators' && !searchCreators.length) {
+    setStatus('Add at least one creator to model, or switch back to Tags mode.', 'error');
     return;
   }
   if (!hasApiKey()) { openKeyModal(); return; }
@@ -425,6 +767,28 @@ async function executeSearch(append){
   searchBtn.disabled = true;
   showMoreBtn.disabled = true;
   setStatus('Searching YouTube…', 'busy');
+
+  // The profile is derived once and reused while paging, so "load more" doesn't
+  // pay to re-read the creators' uploads every time.
+  if (searchMode === 'creators' && (!append || !creatorProfile)) {
+    try {
+      creatorProfile = await buildCreatorProfile();
+      renderCreatorProfile();
+    } catch(e) {
+      setStatus(`Couldn't model those creators: ${escapeHTML(e.message || 'unknown error')}`, 'error');
+      searching = false;
+      searchBtn.disabled = false;
+      return;
+    }
+  }
+
+  const q = buildQuery();
+  if (!q) {
+    setStatus('Type a search term, or add at least one tag, before searching.', 'error');
+    searching = false;
+    searchBtn.disabled = false;
+    return;
+  }
 
   if (!append) {
     pool = [];
@@ -449,6 +813,11 @@ async function executeSearch(append){
     const days = TIME_RANGE_DAYS[searchFilters.time];
     if (days) params.set('publishedAfter', new Date(Date.now() - days * 86400000).toISOString());
     if (searchFilters.region !== 'any') params.set('regionCode', searchFilters.region);
+    // Pin creator-mode searches to the category the seeds actually publish in,
+    // which keeps the derived terms from drifting into an unrelated niche.
+    if (searchMode === 'creators' && creatorProfile && creatorProfile.categoryId) {
+      params.set('videoCategoryId', creatorProfile.categoryId);
+    }
     if (searchFilters.language !== 'any') params.set('relevanceLanguage', searchFilters.language);
     if (append && nextPageToken) params.set('pageToken', nextPageToken);
 
@@ -508,7 +877,12 @@ async function executeSearch(append){
       searchEmpty.innerHTML = `<h2>No results</h2><p>YouTube returned nothing for <b>${escapeHTML(q)}</b>. Try broader wording or fewer tags.</p>`;
       setStatus('', '');
     } else {
-      setStatus(`Searched for <b>${escapeHTML(q)}</b> — ${pool.length} result${pool.length === 1 ? '' : 's'} loaded, ${total} matching your filters.`, 'ok');
+      if (searchMode === 'creators' && creatorProfile) {
+        const names = creatorProfile.creators.map(c => escapeHTML(c.title)).join(', ');
+        setStatus(`Creators like <b>${names}</b> — ${pool.length} result${pool.length === 1 ? '' : 's'} loaded, ${total} after filtering out their own uploads.`, 'ok');
+      } else {
+        setStatus(`Searched for <b>${escapeHTML(q)}</b> — ${pool.length} result${pool.length === 1 ? '' : 's'} loaded, ${total} matching your filters.`, 'ok');
+      }
     }
     renderResults();
 
@@ -571,11 +945,21 @@ tagInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
     addTagsFromInput();
-  } else if (e.key === 'Backspace' && !tagInput.value && searchTags.length) {
-    searchTags.pop();
-    saveSearchTags();
-    renderTags();
-    markFiltersDirty();
+  } else if (e.key === 'Backspace' && !tagInput.value) {
+    if (searchMode === 'creators' && searchCreators.length) {
+      searchCreators.pop();
+      saveSearchCreators();
+      creatorProfile = null;
+      renderCreatorProfile();
+      renderTags();
+      renderModeUI();
+      markFiltersDirty();
+    } else if (searchMode === 'tags' && searchTags.length) {
+      searchTags.pop();
+      saveSearchTags();
+      renderTags();
+      markFiltersDirty();
+    }
   }
 });
 tagInput.addEventListener('blur', addTagsFromInput);
@@ -590,6 +974,21 @@ showMoreBtn.onclick = () => {
     requestSearch(true);
   }
 };
+
+modeSwitch.querySelectorAll('.mode-opt').forEach(btn => {
+  btn.onclick = () => {
+    const next = btn.dataset.mode;
+    if (next === searchMode) return;
+    searchMode = next;
+    saveSearchMode();
+    tagInput.value = '';
+    renderTags();
+    renderModeUI();
+    renderCreatorProfile();
+    markFiltersDirty();
+    setStatus('', '');
+  };
+});
 
 filtersToggle.onclick = () => {
   const open = filtersPanel.style.display !== 'none';
@@ -629,5 +1028,7 @@ window.refreshUI = () => {};
 loadSearchState();
 writeFiltersToUI();
 renderTags();
+renderModeUI();
+renderCreatorProfile();
 initCommonPage(null, { autoRefresh: false });
 searchInput.focus();

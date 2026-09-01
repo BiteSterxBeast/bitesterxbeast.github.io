@@ -189,6 +189,23 @@
 
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
+        <span class="v">V0.18</span>
+        <span class="d">September 1, 2026</span>
+      </div>
+      <ul>
+        <li>Added a Tags / Creators switch to the second search bar.</li>
+        <li>Creators mode takes up to three creators and finds other channels making similar content. Give it an @handle, channel URL, or name.</li>
+        <li>It samples each creator’s 15 most recent uploads and builds a style profile from their video tags, titles, and channel keywords, then searches on that profile and constrains it to the category they actually publish in.</li>
+        <li>Videos from the seed creators themselves are filtered out, so results are only other people making that kind of content.</li>
+        <li>With more than one creator, only traits they <em>share</em> are used, so one channel’s quirks can’t skew the results. One creator at a time gives the sharpest profile.</li>
+        <li>The derived profile is shown on screen, so it’s clear what the search actually ran on rather than being a black box.</li>
+        <li>Creator chips warn when a bare name is used instead of an @handle or URL, since a name has no cheap lookup and costs about 100 extra quota units to resolve.</li>
+        <li>The profile is reused while paging, so "Show me more" never pays to re-read the creators’ uploads.</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
         <span class="v">V0.17</span>
         <span class="d">August 31, 2026</span>
       </div>
