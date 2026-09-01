@@ -1,7 +1,5 @@
 // list.js — Tab List page only. Depends on state.js, api.js, ui.js.
 
-window.CD_PAGE = 'list';
-
 const grid = document.getElementById('grid');
 const emptyState = document.getElementById('emptyState');
 

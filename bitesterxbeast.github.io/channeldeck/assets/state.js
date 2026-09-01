@@ -24,144 +24,13 @@ const MILESTONES = [
 
 const palette = ['#34D6C4', '#F2B84B', '#FF4B3E', '#9b59b6', '#3498db', '#e67e22', '#2ecc71', '#e74c3c'];
 
-// --- API quota accounting ---
-// Every Channel Deck page shares one running total, tracked per API key, so the
-// quota bar reads the same no matter which tab you're on. Costs come straight
-// from YouTube's published quota table: search is the expensive one at 100
-// units, everything else Channel Deck touches is 1.
-const QUOTA_DAILY_LIMIT = 10000;
-
-const API_COSTS = {
-  search: 100,
-  videos: 1,
-  channels: 1,
-  playlistItems: 1,
-  playlists: 1,
-  commentThreads: 1
-};
-
-// The four Channel Deck tabs, used for the per-page quota-bar toggles and the
-// per-page API key assignment in Settings.
-const CD_PAGES = [
-  { id: 'list',        label: 'Tab List' },
-  { id: 'graph',       label: 'Graph View' },
-  { id: 'competitors', label: 'Competitors' },
-  { id: 'search',      label: 'Search' }
-];
-
-// { day: 'YYYY-MM-DD', keys: { '0': 1204, '1': 90 } } — keyed by index into
-// apiKeys. Resets automatically when the Pacific date rolls over, which is when
-// YouTube resets the real allowance.
-let quotaUsage = { day: null, keys: {} };
-
-// YouTube's daily quota resets at midnight Pacific, not in the viewer's local
-// timezone, so the day key is pinned to America/Los_Angeles.
-function quotaDayKey(){
-  try {
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-  } catch(e){
-    return new Date().toISOString().slice(0, 10);
-  }
-}
-
-function saveQuotaUsage(){
-  try { localStorage.setItem('channelDeck_quota', JSON.stringify(quotaUsage)); } catch(e){}
-}
-
-function rolloverQuotaIfNeeded(){
-  const today = quotaDayKey();
-  if (quotaUsage.day !== today) {
-    quotaUsage = { day: today, keys: {} };
-    saveQuotaUsage();
-    return true;
-  }
-  return false;
-}
-
-// Works out what a given API call costs by looking at which endpoint it hit.
-function quotaCostForUrl(url){
-  const m = /\/youtube\/v3\/([a-zA-Z]+)/.exec(url || '');
-  if (!m) return 1;
-  return API_COSTS[m[1]] !== undefined ? API_COSTS[m[1]] : 1;
-}
-
-function recordQuota(keyIndex, units){
-  rolloverQuotaIfNeeded();
-  const k = String(keyIndex);
-  quotaUsage.keys[k] = (quotaUsage.keys[k] || 0) + units;
-  saveQuotaUsage();
-  if (typeof renderQuotaBar === 'function') renderQuotaBar();
-  if (typeof refreshApiKeyQuotaLabels === 'function') refreshApiKeyQuotaLabels();
-}
-
-function getKeyQuota(keyIndex){
-  rolloverQuotaIfNeeded();
-  return quotaUsage.keys[String(keyIndex)] || 0;
-}
-
-function getKeyQuotaPct(keyIndex){
-  return Math.min(100, (getKeyQuota(keyIndex) / QUOTA_DAILY_LIMIT) * 100);
-}
-
-// Only keys that actually have a value count toward the ceiling — an empty
-// slot doesn't grant another 10,000 units.
-function activeKeyCount(){
-  return Math.max(1, apiKeys.filter(k => k && k.value && k.value.trim() !== '').length);
-}
-
-function totalQuotaUsed(){
-  rolloverQuotaIfNeeded();
-  return Object.values(quotaUsage.keys).reduce((a, b) => a + b, 0);
-}
-
-function totalQuotaLimit(){
-  return QUOTA_DAILY_LIMIT * activeKeyCount();
-}
-
-// --- Chart history ---
-// Snapshots are bucketed to the top of each hour. One point per hour, kept for
-// CHART_RETENTION_DAYS so the 90d scale always has something to draw. Hours in
-// which no Channel Deck page was open get backfilled with the last known value
-// on the next snapshot, which is what produces the flat line across downtime.
-const HOUR_MS = 3600000;
-const CHART_RETENTION_DAYS = 90;
-const CHART_MAX_POINTS = CHART_RETENTION_DAYS * 24; // 2160 hourly slots
-
-const GRAPH_RANGES = [
-  { days: 7,  label: '7d'  },
-  { days: 28, label: '28d' },
-  { days: 90, label: '90d' }
-];
-
-function hourBucket(ts){ return Math.floor(ts / HOUR_MS) * HOUR_MS; }
-
-// Label text depends on how wide the visible range is — an hour-of-day stamp is
-// useless across 90 days, and a bare date is useless across 7.
-//
-// The timestamp is re-bucketed before formatting so the label can only ever
-// read as a clean hour ("1 PM", never "12:53 PM"), even if a stray unaligned
-// timestamp survives from an older version of the stored history.
-function formatSnapshotLabel(ts, rangeDays){
-  const d = new Date(hourBucket(ts));
-  if (rangeDays <= 7) {
-    const hour = d.toLocaleTimeString([], {hour:'numeric', hour12:true});
-    return d.toLocaleDateString([], {month:'numeric', day:'numeric'}) + ' ' + hour;
-  }
-  return d.toLocaleDateString([], {month:'numeric', day:'numeric'});
-}
-
 let appSettings = {
   volume: 100,
   muted: false,
   windows: { '1d': true, '7d': true, '28d': true, '90d': true, '365d': true },
   refreshIntervalIndex: 0,
   discordWebhook: '',
-  discordInterval: 'milestones',
-  // Which tabs show the quota bar.
-  quotaBarPages: { list: true, graph: true, competitors: true, search: true },
-  // Which API key each tab starts on. 'auto' keeps the original behaviour of
-  // using whichever key is currently active and rotating on quota errors.
-  pageKeys: { list: 'auto', graph: 'auto', competitors: 'auto', search: 'auto' }
+  discordInterval: 'milestones'
 };
 
 let apiKeys = [{name: 'API Key 1', value: ''}];
@@ -222,44 +91,6 @@ function hexToRgb(hex) {
   } : {r:52, g:214, b:196};
 }
 
-// Collapses existing history onto the hourly grid. Older versions of Channel
-// Deck recorded snapshots at arbitrary times (every refresh, on load, etc), so
-// stored history can contain several points inside the same hour. Keeping the
-// last point per hour makes the saved series line up with what recordChart-
-// Snapshot() writes from now on, so the two never interleave out of order.
-function normalizeChartSnapshots(){
-  if (!chartSnapshots.timestamps || !chartSnapshots.timestamps.length) return;
-
-  const slotIndex = new Map(); // hour bucket -> index in the rebuilt arrays
-  const buckets = [];
-  chartSnapshots.timestamps.forEach((ts, i) => {
-    const b = hourBucket(ts);
-    if (slotIndex.has(b)) {
-      buckets[slotIndex.get(b)] = i; // later point in the same hour wins
-    } else {
-      slotIndex.set(b, buckets.length);
-      buckets.push(i);
-    }
-  });
-
-  const hours = [...slotIndex.keys()];
-  chartSnapshots.timestamps = hours;
-  chartSnapshots.labels = hours.map(ts => formatSnapshotLabel(ts, 7));
-
-  for (const id in chartSnapshots.datasets) {
-    const ds = chartSnapshots.datasets[id];
-    ds.subsData  = buckets.map(i => ds.subsData ? ds.subsData[i]  ?? null : null);
-    ds.viewsData = buckets.map(i => ds.viewsData ? ds.viewsData[i] ?? null : null);
-    ds.vphData   = buckets.map(i => ds.vphData ? ds.vphData[i]   ?? null : null);
-  }
-}
-
-// Wipes all recorded graph history. Used by the Reset Graph button.
-function clearChartSnapshots(){
-  chartSnapshots = { labels: [], timestamps: [], datasets: {} };
-  saveChartSnapshots();
-}
-
 // --- Persistence ---
 function saveChannels(){
   try{ localStorage.setItem('channelDeck_channels', JSON.stringify(channels)); }catch(e){}
@@ -307,14 +138,6 @@ function loadState(){
     if (s) {
       appSettings = Object.assign({ refreshIntervalIndex: 0 }, JSON.parse(s));
       if(!appSettings.windows) appSettings.windows = { '1d': true, '7d': true, '28d': true, '90d': true, '365d': true };
-      // Settings saved before these options existed won't have them, so fill in
-      // the defaults rather than leaving them undefined.
-      if(!appSettings.quotaBarPages) appSettings.quotaBarPages = { list: true, graph: true, competitors: true, search: true };
-      if(!appSettings.pageKeys) appSettings.pageKeys = { list: 'auto', graph: 'auto', competitors: 'auto', search: 'auto' };
-      CD_PAGES.forEach(pg => {
-        if(appSettings.quotaBarPages[pg.id] === undefined) appSettings.quotaBarPages[pg.id] = true;
-        if(appSettings.pageKeys[pg.id] === undefined) appSettings.pageKeys[pg.id] = 'auto';
-      });
     }
   } catch(e){}
 
@@ -369,12 +192,7 @@ function loadState(){
          chartSnapshots.timestamps = chartSnapshots.labels.map(() => now);
       }
 
-      // Retain 90 days of hourly history (was 1 day) so the 7d/28d/90d scales
-      // all have data to draw.
-      const retentionCutoff = now - CHART_RETENTION_DAYS * 86400000;
-      const validIndices = chartSnapshots.timestamps
-        .map((ts, i) => ts >= retentionCutoff ? i : -1)
-        .filter(i => i !== -1);
+      const validIndices = chartSnapshots.timestamps.map((ts, i) => now - ts < ONE_DAY ? i : -1).filter(i => i !== -1);
 
       chartSnapshots.timestamps = validIndices.map(i => chartSnapshots.timestamps[i]);
       chartSnapshots.labels = validIndices.map(i => chartSnapshots.labels[i]);
@@ -401,8 +219,6 @@ function loadState(){
              ds.vphData = validIndices.map(i => ds.vphData[i]);
          }
       }
-
-      normalizeChartSnapshots();
     }
   } catch(e){}
 
@@ -410,13 +226,4 @@ function loadState(){
     const vh = localStorage.getItem('channelDeck_videoHistory');
     if (vh) videoHistory = JSON.parse(vh);
   } catch(e){}
-
-  try {
-    const qu = localStorage.getItem('channelDeck_quota');
-    if (qu) quotaUsage = JSON.parse(qu);
-  } catch(e){}
-  if (!quotaUsage || typeof quotaUsage !== 'object' || !quotaUsage.keys) {
-    quotaUsage = { day: quotaDayKey(), keys: {} };
-  }
-  rolloverQuotaIfNeeded();
 }

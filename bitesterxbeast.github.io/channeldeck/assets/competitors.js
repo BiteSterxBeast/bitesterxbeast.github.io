@@ -1,7 +1,5 @@
 // competitors.js — Competitors page only. Depends on state.js, api.js, ui.js.
 
-window.CD_PAGE = 'competitors';
-
 const competitorsGrid = document.getElementById('competitorsGrid');
 const emptyStateCompetitors = document.getElementById('emptyStateCompetitors');
 

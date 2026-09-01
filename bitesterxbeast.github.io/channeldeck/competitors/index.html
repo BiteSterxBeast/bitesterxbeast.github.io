@@ -2,20 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Channel Deck — Graph View</title>
+<title>Channel Deck — Competitors</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../assets/style.css">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
-
 <meta property="og:type" content="website">
 <meta property="og:title" content="Channel Deck">
 <meta property="og:description" content="A live multi-channel YouTube analytics dashboard tracking real-time subscribers, VPH, video performance, and historical graphs.">
-<meta property="og:url" content="https://bitesterxbeast.github.io/channeldeck/graph/">
-<meta property="og:image" content="https://bitesterxbeast.github.io/favicon.png?v=2">
+<meta property="og:url" content="https://bitesterxbeast.github.io/channeldeck/competitors/">
+<meta property="og:image" content="https://bitesterxbeast.github.io/favicon.png">
 <meta name="theme-color" content="#34D6C4">
 </head>
 <body>
@@ -30,41 +26,22 @@
     <button class="ghost settings-btn" id="settingsBtn" title="Settings">⚙</button>
     <button class="ghost" id="apiKeyBtn">API keys</button>
     <button class="ghost" id="refreshAllBtn">Refresh all</button>
-    <button class="primary" id="addBtn">+ Add channel</button>
+    <button class="primary" id="addBtn">+ Add competitor</button>
   </div>
 </header>
 
 <div class="tabs-bar">
   <a href="../home/" class="ghost">Tab List</a>
-  <a href="../graph/" class="primary">Graph View</a>
-  <a href="../competitors/" class="ghost">Competitors</a>
-  <a href="../search/" class="ghost">Search</a>
+  <a href="../graph/" class="ghost">Graph View</a>
+  <a href="../competitors/" class="primary">Competitors</a>
 </div>
 
 <main>
-  <div class="quota-meter" id="quotaMeter" style="display:none;"></div>
-  <div class="graph-header-wrapper">
-    <div class="graph-header">
-      <div id="graphToggles" class="graph-toggles"></div>
-      <div style="display:flex; gap: 8px; align-items: center;">
-         <button class="primary" id="metricSubsBtn">Subscribers</button>
-         <button class="ghost" id="metricViewsBtn">Views</button>
-         <button class="ghost" id="resetZoomBtn" style="font-size: 11px; padding: 6px 12px;">Reset Zoom</button>
-         <button class="ghost" id="resetGraphBtn" style="font-size: 11px; padding: 6px 12px; color: var(--live); border-color: var(--live);">Reset Graph</button>
-      </div>
-    </div>
-    <div style="display:flex; gap: 8px; justify-content: flex-end; width: 100%; align-items:center;">
-       <span style="font-size:11px; color:var(--muted); margin-right:2px;">Range</span>
-       <div id="rangeToggles" style="display:flex; gap:8px;"></div>
-    </div>
-    <div id="viewsSubToggles" style="display:none; gap: 8px; justify-content: flex-end; width: 100%;">
-       <button class="primary" id="subMetricVphBtn" style="font-size: 11px; padding: 6px 12px;">VPH</button>
-       <button class="ghost" id="subMetricTotalViewsBtn" style="font-size: 11px; padding: 6px 12px;">Total Views</button>
-    </div>
+  <div id="emptyStateCompetitors" class="empty" style="display:none;">
+    <h2>No competitors tracked</h2>
+    <p>Click "+ Add competitor" in the top right to start tracking rival channels side-by-side.</p>
   </div>
-  <div class="graph-container">
-    <canvas id="subChart"></canvas>
-  </div>
+  <div id="competitorsGrid"></div>
 </main>
 
 <div class="footnote" id="footnote"></div>
@@ -151,21 +128,6 @@
     </div>
 
     <div class="settings-group">
-      <h4>Show Quota Bar On</h4>
-      <div class="checkbox-grid" id="quotaBarTogglesGrid">
-        <!-- populated via js -->
-      </div>
-    </div>
-
-    <div class="settings-group">
-      <h4>API Key Per Tab</h4>
-      <div class="page-key-grid" id="pageKeyGrid">
-        <!-- populated via js -->
-      </div>
-      <div class="settings-hint">"Automatic" uses whichever key is active and rotates on quota errors. A pinned key is a starting point — if it runs dry, the deck still rotates onward rather than stopping.</div>
-    </div>
-
-    <div class="settings-group">
       <h4>Display View Windows</h4>
       <div class="checkbox-grid" id="windowTogglesGrid">
         <!-- populated via js -->
@@ -173,7 +135,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.16</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.14</span>
       <button class="primary" id="settingsClose">Close & Save</button>
     </div>
   </div>
@@ -183,39 +145,9 @@
 <div class="overlay" id="changelogOverlay" style="display:none;">
   <div class="modal" style="max-height: 85vh; overflow-y: auto;">
     <h3 style="margin-bottom: 20px;">Changelog</h3>
-    <div style="margin-bottom: 24px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.16</h4>
-        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 31, 2026</span>
-      </div>
-      <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
-        <li>Quota tracking is now global: every API call from every tab is counted, and the quota bar reads the same running total whether you are on Tab List, Graph View, Competitors, or Search.</li>
-        <li>Usage is tracked per API key and resets automatically at midnight Pacific, matching when YouTube resets the real allowance.</li>
-        <li>The quota bar now breaks down usage per key, with a colour that shifts from teal to amber to red as a key fills up.</li>
-        <li>Added per-tab quota bar toggles in Settings, so the bar can be switched off on any tab individually.</li>
-        <li>Added per-tab API key assignment in Settings. A tab can be pinned to a specific key, and still rotates onward if that key runs dry.</li>
-        <li>The API keys menu now shows what percentage of each key’s daily quota has been spent.</li>
-        <li>A key that returns a quota-exceeded error is now marked as fully spent, so the bar reflects reality instead of the running estimate.</li>
-      </ul>
-    </div>
-
     <div style="margin-bottom: 16px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.15</h4>
-        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 31, 2026</span>
-      </div>
-      <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
-        <li>Added the Search tab: search YouTube by a term plus optional tags, with results ranked by view count.</li>
-        <li>Search filters for sort order, upload time range, long-form vs Shorts, minimum views, region, language, and hiding live streams.</li>
-        <li>Each search pulls a full 50-result page at once, so "Show me more" reveals the next 10 for free and only spends quota once the batch runs out.</li>
-        <li>A one-time warning now appears before your first search, explaining that a search costs roughly 101 of a key's 10,000 daily quota units.</li>
-        <li>Added a daily search quota meter, and results can be added straight to Competitors from the search list.</li>
-      </ul>
-    </div>
-
-    <div style="margin-bottom: 16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.14</h4>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.14</h4>
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 11, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
@@ -230,7 +162,7 @@
 
 <div class="overlay" id="addOverlay" style="display:none;">
   <div class="modal">
-    <h3 id="addOverlayTitle">Add a channel</h3>
+    <h3 id="addOverlayTitle">Add a competitor</h3>
     <p>Paste a channel @handle (e.g. <span class="num">@mkbhd</span>), a full channel URL, or a channel ID (starts with UC).</p>
     <label for="channelInput">Channel</label>
     <input type="text" id="channelInput" placeholder="@yourchannel" autocomplete="off">
@@ -238,17 +170,6 @@
     <div class="modal-actions">
       <button class="ghost" id="addCancel">Cancel</button>
       <button class="primary" id="addConfirm">Add</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="resetGraphOverlay" style="display:none;">
-  <div class="modal">
-    <h3>Reset graph history?</h3>
-    <p>This permanently deletes every recorded snapshot — all subscriber, views, and VPH history across every range. Your channels, notes, and settings are not affected. This can't be undone.</p>
-    <div class="modal-actions">
-      <button class="ghost" id="resetGraphCancel">Cancel</button>
-      <button class="primary" id="resetGraphConfirm" style="background: var(--live); border-color: var(--live);">Reset Graph</button>
     </div>
   </div>
 </div>
@@ -278,6 +199,6 @@
 <script src="../assets/state.js"></script>
 <script src="../assets/api.js"></script>
 <script src="../assets/ui.js"></script>
-<script src="../assets/graph.js"></script>
+<script src="../assets/competitors.js"></script>
 </body>
 </html>

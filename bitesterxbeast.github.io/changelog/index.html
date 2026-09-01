@@ -189,37 +189,6 @@
 
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
-        <span class="v">V0.16</span>
-        <span class="d">August 31, 2026</span>
-      </div>
-      <ul>
-        <li>Quota tracking is now global: every API call from every tab is counted, and the quota bar reads the same running total whether you are on Tab List, Graph View, Competitors, or Search.</li>
-        <li>Usage is tracked per API key and resets automatically at midnight Pacific, matching when YouTube resets the real allowance.</li>
-        <li>The quota bar now breaks down usage per key, with a colour that shifts from teal to amber to red as a key fills up.</li>
-        <li>Added per-tab quota bar toggles in Settings, so the bar can be switched off on any tab individually.</li>
-        <li>Added per-tab API key assignment in Settings. A tab can be pinned to a specific key, and still rotates onward if that key runs dry.</li>
-        <li>The API keys menu now shows what percentage of each key’s daily quota has been spent.</li>
-        <li>A key that returns a quota-exceeded error is now marked as fully spent, so the bar reflects reality instead of the running estimate.</li>
-      </ul>
-    </div>
-
-    <div class="changelog-entry">
-      <div class="changelog-entry-head">
-        <span class="v">V0.15</span>
-        <span class="d">August 31, 2026</span>
-      </div>
-      <ul>
-        <li>Added the Search tab: search YouTube by a term plus optional tags, with results ranked by view count.</li>
-        <li>Tags act as query shorthand — press Enter after each one, and prefix a tag with "-" to exclude it from results.</li>
-        <li>Added search filters for sort order, upload time range, long-form vs Shorts, minimum views, region, language, and hiding live streams and premieres.</li>
-        <li>Each search pulls a full 50-result page at once, so "Show me more" reveals the next 10 for free and only spends quota once that batch runs out.</li>
-        <li>Added a one-time warning before the first search, explaining that a single search costs roughly 101 of a key's 10,000 daily quota units.</li>
-        <li>Added a daily search quota meter, and a shortcut to add any result's channel straight to Competitors.</li>
-      </ul>
-    </div>
-
-    <div class="changelog-entry">
-      <div class="changelog-entry-head">
         <span class="v">V0.14</span>
         <span class="d">August 11, 2026</span>
       </div>
@@ -346,23 +315,8 @@
   </div>
 
   <div class="changelog-section">
-    <h3>Video Downloader</h3>
-    <div class="changelog-entry latest">
-      <div class="changelog-entry-head">
-        <span class="v">V1.0 — Launch</span>
-        <span class="d">August 12, 2026</span>
-      </div>
-      <ul>
-        <li>Launched as a curated directory instead of an in-house downloader. Actually extracting YouTube video streams requires bypassing signed, constantly-rotating protections and running a maintained backend server — not something a static site can do safely or reliably, and public "YouTube downloader" sites have a long history of legal trouble.</li>
-        <li>Lists four vetted options: YouTube Premium's official offline downloads, the open-source and ad-free cobalt, yt-dlp, and 4K Video Downloader+.</li>
-        <li>Added a general safety section on spotting scam "downloader" sites and a copyright reminder for anyone using the listed tools.</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="changelog-section">
     <h3>More Tools</h3>
-    <p class="changelog-note">Mash Uploads and Extended Studios will each get their own changelog section here once they launch.</p>
+    <p class="changelog-note">Mash Uploads, Extended Studios, and Video Downloader will each get their own changelog section here once they launch.</p>
   </div>
 </main>
 <footer>

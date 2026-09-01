@@ -73,54 +73,6 @@ function updateApiStatusUi() {
   apiStatusIndicator.innerText = `Using ${apiKeys[activeKeyIndex].name || ('API Key ' + (activeKeyIndex + 1))}`;
 }
 
-// --- Shared quota bar ---
-// Rendered into #quotaMeter, which every Channel Deck page carries. All four
-// tabs read the same stored totals, so the numbers agree wherever you are.
-function renderQuotaBar(){
-  const el = document.getElementById('quotaMeter');
-  if (!el) return;
-
-  const pageId = window.CD_PAGE;
-  const enabled = !pageId || !appSettings.quotaBarPages || appSettings.quotaBarPages[pageId] !== false;
-  if (!enabled) { el.style.display = 'none'; return; }
-  el.style.display = 'block';
-
-  const used = totalQuotaUsed();
-  const limit = totalQuotaLimit();
-  const keyCount = activeKeyCount();
-  const pct = limit ? Math.min(100, (used / limit) * 100) : 0;
-
-  let tone = 'var(--teal)';
-  if (pct >= 80) tone = 'var(--live)';
-  else if (pct >= 50) tone = 'var(--amber)';
-
-  // Per-key breakdown, so a key that's nearly spent is visible even when the
-  // combined total still looks healthy.
-  const chips = apiKeys.map((ak, i) => {
-    if (!ak.value || ak.value.trim() === '') return '';
-    const kp = getKeyQuotaPct(i);
-    let ktone = 'var(--teal)';
-    if (kp >= 80) ktone = 'var(--live)';
-    else if (kp >= 50) ktone = 'var(--amber)';
-    const isActive = i === activeKeyIndex;
-    return `<span class="quota-key-chip${isActive ? ' active' : ''}" title="${escapeHTML(ak.name || ('API Key ' + (i+1)))}: ${getKeyQuota(i).toLocaleString()} of ${QUOTA_DAILY_LIMIT.toLocaleString()} units">
-      <span class="quota-key-dot" style="background:${ktone};"></span>
-      ${escapeHTML(ak.name || ('API Key ' + (i+1)))}
-      <b class="num" style="color:${ktone};">${Math.round(kp)}%</b>
-    </span>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div class="quota-meter-top">
-      <span>API quota used today</span>
-      <span class="num" style="color:${tone};">~${used.toLocaleString()} / ${limit.toLocaleString()}</span>
-    </div>
-    <div class="quota-bar"><div class="quota-bar-fill" style="width:${pct}%; background:${tone};"></div></div>
-    ${chips ? `<div class="quota-key-chips">${chips}</div>` : ''}
-    <div class="quota-meter-note">Counted on this device across all four tabs, and reset at midnight Pacific when YouTube's own allowance rolls over. ${keyCount} key${keyCount === 1 ? '' : 's'} in use at 10,000 units each. Searching costs about 101 units per run; a channel refresh costs a few.</div>
-  `;
-}
-
 // --- Settings Modal ---
 function updateRefreshSliderUI() {
   const val = parseInt(refreshIntervalSlider.value, 10);
@@ -160,67 +112,6 @@ function initSettingsUI() {
     lbl.innerHTML = `<input type="checkbox" class="win-toggle" value="${w.label}" ${checked ? 'checked' : ''}> ${w.label}`;
     windowTogglesGrid.appendChild(lbl);
   });
-
-  renderQuotaBarToggles();
-  renderPageKeyAssignments();
-}
-
-// Per-tab checkboxes controlling where the quota bar appears.
-function renderQuotaBarToggles(){
-  const grid = document.getElementById('quotaBarTogglesGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  CD_PAGES.forEach(pg => {
-    const lbl = document.createElement('label');
-    const checked = appSettings.quotaBarPages[pg.id] !== false;
-    lbl.innerHTML = `<input type="checkbox" class="quota-bar-toggle" value="${pg.id}" ${checked ? 'checked' : ''}> ${pg.label}`;
-    grid.appendChild(lbl);
-  });
-}
-
-// Per-tab API key assignment. Only keys that actually hold a value are
-// offered, since pinning a tab to an empty slot would just fall through.
-function renderPageKeyAssignments(){
-  const wrap = document.getElementById('pageKeyGrid');
-  if (!wrap) return;
-  wrap.innerHTML = '';
-
-  const usable = apiKeys
-    .map((ak, i) => ({ ak, i }))
-    .filter(o => o.ak.value && o.ak.value.trim() !== '');
-
-  CD_PAGES.forEach(pg => {
-    const row = document.createElement('div');
-    row.className = 'page-key-row';
-
-    const label = document.createElement('span');
-    label.className = 'page-key-label';
-    label.textContent = pg.label;
-
-    const sel = document.createElement('select');
-    sel.className = 'page-key-select';
-    sel.dataset.page = pg.id;
-
-    const autoOpt = document.createElement('option');
-    autoOpt.value = 'auto';
-    autoOpt.textContent = 'Automatic';
-    sel.appendChild(autoOpt);
-
-    usable.forEach(o => {
-      const opt = document.createElement('option');
-      opt.value = String(o.i);
-      opt.textContent = `${o.ak.name || ('API Key ' + (o.i + 1))} — ${Math.round(getKeyQuotaPct(o.i))}% used`;
-      sel.appendChild(opt);
-    });
-
-    const current = appSettings.pageKeys[pg.id];
-    sel.value = (current !== undefined && [...sel.options].some(o => o.value === String(current)))
-      ? String(current) : 'auto';
-
-    row.appendChild(label);
-    row.appendChild(sel);
-    wrap.appendChild(row);
-  });
 }
 
 const settingsBtn = document.getElementById('settingsBtn');
@@ -243,21 +134,8 @@ if (settingsClose) settingsClose.onclick = () => {
     appSettings.windows[cb.value] = cb.checked;
   });
 
-  document.querySelectorAll('.quota-bar-toggle').forEach(cb => {
-    appSettings.quotaBarPages[cb.value] = cb.checked;
-  });
-
-  document.querySelectorAll('.page-key-select').forEach(sel => {
-    appSettings.pageKeys[sel.dataset.page] = sel.value === 'auto' ? 'auto' : Number(sel.value);
-  });
-
   saveSettings();
   settingsOverlay.style.display = 'none';
-
-  // The key this tab should be using may have just changed, and the bar may
-  // have just been switched on or off for this page.
-  if (typeof applyPageKeyPreference === 'function') applyPageKeyPreference();
-  renderQuotaBar();
   if (typeof window.refreshUI === 'function') window.refreshUI();
 
   // Restart auto-refresh timers if the interval changed
@@ -705,25 +583,6 @@ function renderApiKeysModal() {
     valInput.style.flex = '1';
     valInput.style.marginBottom = '0';
 
-    // How much of this key's own 10,000-unit day has been spent.
-    const pctEl = document.createElement('span');
-    pctEl.className = 'api-key-pct num';
-    pctEl.dataset.keyPct = String(idx);
-    const hasValue = ak.value && ak.value.trim() !== '';
-    if (hasValue) {
-      const pct = getKeyQuotaPct(idx);
-      let tone = 'var(--teal)';
-      if (pct >= 80) tone = 'var(--live)';
-      else if (pct >= 50) tone = 'var(--amber)';
-      pctEl.style.color = tone;
-      pctEl.textContent = `${Math.round(pct)}%`;
-      pctEl.title = `${getKeyQuota(idx).toLocaleString()} of ${QUOTA_DAILY_LIMIT.toLocaleString()} units used today`;
-    } else {
-      pctEl.style.color = 'var(--dim)';
-      pctEl.textContent = '—';
-      pctEl.title = 'No key entered';
-    }
-
     const delBtn = document.createElement('button');
     delBtn.className = 'ghost';
     delBtn.innerHTML = '✕';
@@ -744,29 +603,11 @@ function renderApiKeysModal() {
 
     row.appendChild(nameInput);
     row.appendChild(valInput);
-    row.appendChild(pctEl);
     row.appendChild(delBtn);
     container.appendChild(row);
   });
 
   document.getElementById('addApiKeyBtn').style.display = apiKeys.length >= 7 ? 'none' : 'block';
-}
-
-// Keeps the percentages live while the modal sits open during a refresh,
-// without rebuilding the rows and wiping whatever is half-typed in them.
-function refreshApiKeyQuotaLabels(){
-  document.querySelectorAll('[data-key-pct]').forEach(el => {
-    const idx = Number(el.dataset.keyPct);
-    const ak = apiKeys[idx];
-    if (!ak || !ak.value || ak.value.trim() === '') return;
-    const pct = getKeyQuotaPct(idx);
-    let tone = 'var(--teal)';
-    if (pct >= 80) tone = 'var(--live)';
-    else if (pct >= 50) tone = 'var(--amber)';
-    el.style.color = tone;
-    el.textContent = `${Math.round(pct)}%`;
-    el.title = `${getKeyQuota(idx).toLocaleString()} of ${QUOTA_DAILY_LIMIT.toLocaleString()} units used today`;
-  });
 }
 
 function openKeyModal(){
@@ -799,9 +640,7 @@ if (keySave) keySave.onclick = async () => {
 
   activeKeyIndex = apiKeys.findIndex(k => k.value && k.value.trim() !== '');
   if (activeKeyIndex === -1) activeKeyIndex = 0;
-  applyPageKeyPreference();
   updateApiStatusUi();
-  renderQuotaBar();
 
   keyOverlay.style.display = 'none';
   if(channels.length || competitors.length) refreshAll();
@@ -814,20 +653,7 @@ if (refreshAllBtn) refreshAllBtn.onclick = refreshAll;
 // Both list.html and graph.html use wireAddChannelModal(); competitors.html
 // uses wireAddCompetitorModal(). Each pushes into the relevant array and
 // kicks off a full data fetch, then lets the page re-render via window.refreshUI.
-//
-// IMPORTANT: this must NOT capture `channels` / `competitors` by reference.
-// loadState() runs later (inside initCommonPage) and *reassigns* those globals
-// to freshly-parsed arrays. A captured reference would then point at the
-// original, now-orphaned array, so pushes would silently vanish and the
-// duplicate check would always miss. We resolve the live array on every call.
-function wireAddModal(kind){
-  const isCompetitor = kind === 'competitor';
-  const getTargetArray = () => (isCompetitor ? competitors : channels);
-  const saveFn = () => (isCompetitor ? saveCompetitors() : saveChannels());
-  const existsMessage = isCompetitor
-    ? 'That competitor is already on your deck.'
-    : 'That channel is already on your deck.';
-
+function wireAddModal(targetArray, saveFn, isCompetitor, existsMessage){
   const addBtn = document.getElementById('addBtn');
   const addOverlay = document.getElementById('addOverlay');
   const channelInput = document.getElementById('channelInput');
@@ -854,7 +680,6 @@ function wireAddModal(kind){
     addConfirm.disabled = true;
     try{
       const id = await resolveChannelId(parsed);
-      const targetArray = getTargetArray();
 
       if(targetArray.some(c => c.id === id)){
         addError.textContent = existsMessage;
@@ -875,7 +700,11 @@ function wireAddModal(kind){
       await fetchAllDataFor(id, isCompetitor);
 
       if (!isCompetitor) {
-        recordChartSnapshot();
+        if (chartSnapshots.labels.length === 0) {
+          recordChartSnapshot();
+        } else if (typeof updateChart === 'function') {
+          updateChart();
+        }
       }
 
     }catch(e){
@@ -893,34 +722,25 @@ function wireAddModal(kind){
 function wireAddChannelModal(){
   const addOverlayTitle = document.getElementById('addOverlayTitle');
   if (addOverlayTitle) addOverlayTitle.innerText = 'Add a channel';
-  wireAddModal('channel');
+  wireAddModal(channels, saveChannels, false, 'That channel is already on your deck.');
 }
 
 function wireAddCompetitorModal(){
   const addOverlayTitle = document.getElementById('addOverlayTitle');
   if (addOverlayTitle) addOverlayTitle.innerText = 'Add a competitor';
-  wireAddModal('competitor');
+  wireAddModal(competitors, saveCompetitors, true, 'That competitor is already on your deck.');
 }
 
 // --- Page bootstrap ---
 // Every page calls this once, passing a callback that renders its own view.
-//
-// opts.autoRefresh defaults to true, matching the dashboard pages, which are
-// expected to pull live data the moment they open. The Search page opts out:
-// landing there shouldn't silently spend API quota on channel refreshes before
-// the reader has actually searched for anything.
-function initCommonPage(pageRenderFn, opts){
-  const autoRefresh = !opts || opts.autoRefresh !== false;
-
+function initCommonPage(pageRenderFn){
   loadState();
-  applyPageKeyPreference();
   updateApiStatusUi();
-  renderQuotaBar();
   renderLogs();
   updateSidePanel();
   if (typeof pageRenderFn === 'function') pageRenderFn();
 
-  if(autoRefresh && hasApiKey()){
+  if(hasApiKey()){
     refreshAll();
     channels.filter(c => c.autoRefresh).forEach(c => startAutoRefresh(c.id));
   }

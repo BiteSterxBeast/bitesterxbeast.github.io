@@ -13,6 +13,8 @@
 // at all — only the filters YouTube itself has to apply (sort order, time range,
 // region, language) require a fresh paid search.
 
+window.CD_PAGE = 'search';
+
 const SEARCH_COST = 100;   // search.list
 const DETAIL_COST = 1;     // videos.list
 const REVEAL_SIZE = 10;    // results revealed per "Show me more"
@@ -66,8 +68,6 @@ const API_FILTERS = ['order', 'time', 'region', 'language'];
 
 let searchFilters = { ...DEFAULT_FILTERS };
 let searchTags = [];
-let searchQuota = { day: null, units: 0 };
-
 let pool = [];             // every result fetched so far, in display order
 let seenIds = new Set();   // dedupe across pages
 let shownCount = 0;        // how many of the filtered pool are on screen
@@ -82,20 +82,6 @@ function saveSearchFilters(){
 function saveSearchTags(){
   try { localStorage.setItem('channelDeck_searchTags', JSON.stringify(searchTags)); } catch(e){}
 }
-function saveSearchQuota(){
-  try { localStorage.setItem('channelDeck_searchQuota', JSON.stringify(searchQuota)); } catch(e){}
-}
-
-// YouTube's daily quota resets at midnight Pacific, so the tracker's "day" is
-// keyed to that timezone rather than the viewer's local date.
-function quotaDayKey(){
-  try {
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-  } catch(e){
-    return new Date().toISOString().slice(0, 10);
-  }
-}
-
 function loadSearchState(){
   try {
     const f = localStorage.getItem('channelDeck_searchFilters');
@@ -110,42 +96,6 @@ function loadSearchState(){
     }
   } catch(e){}
 
-  try {
-    const q = localStorage.getItem('channelDeck_searchQuota');
-    if (q) searchQuota = JSON.parse(q);
-  } catch(e){}
-
-  const today = quotaDayKey();
-  if (!searchQuota || searchQuota.day !== today) {
-    searchQuota = { day: today, units: 0 };
-    saveSearchQuota();
-  }
-}
-
-function addQuota(units){
-  const today = quotaDayKey();
-  if (searchQuota.day !== today) searchQuota = { day: today, units: 0 };
-  searchQuota.units += units;
-  saveSearchQuota();
-  renderQuotaMeter();
-}
-
-function renderQuotaMeter(){
-  if (!quotaMeter) return;
-  const used = searchQuota.units || 0;
-  const pct = Math.min(100, (used / 10000) * 100);
-  let tone = 'var(--teal)';
-  if (pct >= 80) tone = 'var(--live)';
-  else if (pct >= 50) tone = 'var(--amber)';
-
-  quotaMeter.innerHTML = `
-    <div class="quota-meter-top">
-      <span>Search quota spent today</span>
-      <span class="num" style="color:${tone};">~${used.toLocaleString()} / 10,000</span>
-    </div>
-    <div class="quota-bar"><div class="quota-bar-fill" style="width:${pct}%; background:${tone};"></div></div>
-    <div class="quota-meter-note">Estimate only, counted on this device. A default YouTube API key gets 10,000 units per day, and Channel Deck's channel refreshes draw from the same pool.</div>
-  `;
 }
 
 // --- Tag chips ---
@@ -368,7 +318,6 @@ function renderResults(){
       saveCompetitors();
       try {
         await fetchAllDataFor(id, true);
-        addQuota(4); // channel + playlistItems + videos calls, roughly
       } catch(e){}
       renderResults();
     };
@@ -446,8 +395,6 @@ async function executeSearch(append){
 
     const data = await fetchWithFallback(key =>
       `https://www.googleapis.com/youtube/v3/search?${params.toString()}&key=${key}`);
-    addQuota(SEARCH_COST);
-
     nextPageToken = data.nextPageToken || null;
 
     const ids = (data.items || [])
@@ -457,8 +404,6 @@ async function executeSearch(append){
     if (ids.length) {
       const det = await fetchWithFallback(key =>
         `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids.join(',')}&key=${key}`);
-      addQuota(DETAIL_COST);
-
       const fresh = (det.items || []).map(v => {
         const t = v.snippet.thumbnails || {};
         const thumb = (t.maxres && t.maxres.url) || (t.high && t.high.url)
@@ -621,6 +566,5 @@ window.refreshUI = () => {};
 loadSearchState();
 writeFiltersToUI();
 renderTags();
-renderQuotaMeter();
 initCommonPage(null, { autoRefresh: false });
 searchInput.focus();
