@@ -43,11 +43,15 @@ function hourBucket(ts){ return Math.floor(ts / HOUR_MS) * HOUR_MS; }
 
 // Label text depends on how wide the visible range is — an hour-of-day stamp is
 // useless across 90 days, and a bare date is useless across 7.
+//
+// The timestamp is re-bucketed before formatting so the label can only ever
+// read as a clean hour ("1 PM", never "12:53 PM"), even if a stray unaligned
+// timestamp survives from an older version of the stored history.
 function formatSnapshotLabel(ts, rangeDays){
-  const d = new Date(ts);
+  const d = new Date(hourBucket(ts));
   if (rangeDays <= 7) {
-    return d.toLocaleDateString([], {month:'numeric', day:'numeric'}) + ' ' +
-           d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const hour = d.toLocaleTimeString([], {hour:'numeric', hour12:true});
+    return d.toLocaleDateString([], {month:'numeric', day:'numeric'}) + ' ' + hour;
   }
   return d.toLocaleDateString([], {month:'numeric', day:'numeric'});
 }
