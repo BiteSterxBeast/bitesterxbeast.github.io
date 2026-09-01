@@ -743,14 +743,21 @@ function wireAddCompetitorModal(){
 
 // --- Page bootstrap ---
 // Every page calls this once, passing a callback that renders its own view.
-function initCommonPage(pageRenderFn){
+//
+// opts.autoRefresh defaults to true, matching the dashboard pages, which are
+// expected to pull live data the moment they open. The Search page opts out:
+// landing there shouldn't silently spend API quota on channel refreshes before
+// the reader has actually searched for anything.
+function initCommonPage(pageRenderFn, opts){
+  const autoRefresh = !opts || opts.autoRefresh !== false;
+
   loadState();
   updateApiStatusUi();
   renderLogs();
   updateSidePanel();
   if (typeof pageRenderFn === 'function') pageRenderFn();
 
-  if(hasApiKey()){
+  if(autoRefresh && hasApiKey()){
     refreshAll();
     channels.filter(c => c.autoRefresh).forEach(c => startAutoRefresh(c.id));
   }

@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Channel Deck — Competitors</title>
+<title>Channel Deck — Search</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../assets/style.css">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="Channel Deck">
-<meta property="og:description" content="A live multi-channel YouTube analytics dashboard tracking real-time subscribers, VPH, video performance, and historical graphs.">
-<meta property="og:url" content="https://bitesterxbeast.github.io/channeldeck/competitors/">
+<meta property="og:title" content="Channel Deck — Search">
+<meta property="og:description" content="Search YouTube by term and tags, sorted by views, with filters for time range, long-form vs Shorts, region, and more.">
+<meta property="og:url" content="https://bitesterxbeast.github.io/channeldeck/search/">
 <meta property="og:image" content="https://bitesterxbeast.github.io/favicon.png?v=2">
 <meta name="theme-color" content="#34D6C4">
 </head>
@@ -26,23 +26,140 @@
     <button class="ghost settings-btn" id="settingsBtn" title="Settings">⚙</button>
     <button class="ghost" id="apiKeyBtn">API keys</button>
     <button class="ghost" id="refreshAllBtn">Refresh all</button>
-    <button class="primary" id="addBtn">+ Add competitor</button>
   </div>
 </header>
 
 <div class="tabs-bar">
   <a href="../home/" class="ghost">Tab List</a>
   <a href="../graph/" class="ghost">Graph View</a>
-  <a href="../competitors/" class="primary">Competitors</a>
-  <a href="../search/" class="ghost">Search</a>
+  <a href="../competitors/" class="ghost">Competitors</a>
+  <a href="../search/" class="primary">Search</a>
 </div>
 
 <main>
-  <div id="emptyStateCompetitors" class="empty" style="display:none;">
-    <h2>No competitors tracked</h2>
-    <p>Click "+ Add competitor" in the top right to start tracking rival channels side-by-side.</p>
+
+  <div class="search-panel">
+    <div class="search-row">
+      <input type="text" id="searchInput" class="search-field" placeholder="Search a word or term…" autocomplete="off" spellcheck="false">
+      <button class="primary search-go" id="searchBtn">Search</button>
+    </div>
+
+    <div class="search-row">
+      <div class="tag-field">
+        <div class="tag-chips" id="tagChips" style="display:none;"></div>
+        <input type="text" id="tagInput" class="search-field tag-input" placeholder="Tags — press Enter after each. Prefix with “-” to exclude." autocomplete="off" spellcheck="false">
+      </div>
+      <button class="ghost search-go" id="filtersToggle">Filters ▾</button>
+    </div>
+
+    <div class="filters-panel" id="filtersPanel" style="display:none;">
+      <div class="filter-cell">
+        <label for="fOrder">Sort by</label>
+        <select id="fOrder">
+          <option value="viewCount">Most viewed</option>
+          <option value="relevance">Most relevant</option>
+          <option value="date">Newest first</option>
+          <option value="rating">Highest rated</option>
+        </select>
+      </div>
+
+      <div class="filter-cell">
+        <label for="fTime">Uploaded within</label>
+        <select id="fTime">
+          <option value="any">Any time</option>
+          <option value="1">Last 24 hours</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="365">Last year</option>
+        </select>
+      </div>
+
+      <div class="filter-cell">
+        <label for="fType">Content type</label>
+        <select id="fType">
+          <option value="both">Long-form &amp; Shorts</option>
+          <option value="long">Long-form only</option>
+          <option value="short">Shorts only</option>
+        </select>
+      </div>
+
+      <div class="filter-cell">
+        <label for="fMinViews">Minimum views</label>
+        <select id="fMinViews">
+          <option value="0">No minimum</option>
+          <option value="1000">1K+</option>
+          <option value="10000">10K+</option>
+          <option value="100000">100K+</option>
+          <option value="1000000">1M+</option>
+          <option value="10000000">10M+</option>
+        </select>
+      </div>
+
+      <div class="filter-cell">
+        <label for="fRegion">Region</label>
+        <select id="fRegion">
+          <option value="any">Any region</option>
+          <option value="US">United States</option>
+          <option value="GB">United Kingdom</option>
+          <option value="CA">Canada</option>
+          <option value="AU">Australia</option>
+          <option value="IN">India</option>
+          <option value="DE">Germany</option>
+          <option value="FR">France</option>
+          <option value="BR">Brazil</option>
+          <option value="JP">Japan</option>
+          <option value="KR">South Korea</option>
+          <option value="MX">Mexico</option>
+          <option value="PH">Philippines</option>
+        </select>
+      </div>
+
+      <div class="filter-cell">
+        <label for="fLanguage">Language</label>
+        <select id="fLanguage">
+          <option value="any">Any language</option>
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="pt">Portuguese</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="hi">Hindi</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="ru">Russian</option>
+          <option value="ar">Arabic</option>
+        </select>
+      </div>
+
+      <div class="filter-cell filter-cell-wide">
+        <label class="filter-check"><input type="checkbox" id="fNoLive"> Hide live streams and premieres</label>
+        <button class="ghost" id="resetFiltersBtn" style="padding:6px 12px; font-size:12px;">Reset filters</button>
+      </div>
+
+      <div class="filter-note filter-cell-wide">
+        Sort, time range, region, and language are applied by YouTube, so changing them needs a fresh search. Content type, minimum views, and the live-stream toggle are applied locally and cost nothing.
+      </div>
+    </div>
+
+    <div class="filters-dirty" id="filtersDirtyNote" style="display:none;">
+      Your query or filters changed. Press <b>Search</b> to re-run — this spends quota.
+    </div>
   </div>
-  <div id="competitorsGrid"></div>
+
+  <div class="quota-meter" id="quotaMeter"></div>
+
+  <div class="search-status" id="searchStatus" style="display:none;"></div>
+
+  <div class="empty" id="searchEmpty" style="display:none;"></div>
+
+  <div id="searchResults"></div>
+
+  <div class="show-more-wrap" id="showMoreWrap" style="display:none;">
+    <button class="primary" id="showMoreBtn">Show me more</button>
+    <div class="show-more-note" id="showMoreNote"></div>
+  </div>
+
 </main>
 
 <div class="footnote" id="footnote"></div>
@@ -80,6 +197,30 @@
     </div>
   </div>
   <div id="subLogContainer" class="sub-log-container"></div>
+</div>
+
+<!-- Quota Warning Modal -->
+<div class="overlay" id="quotaOverlay" style="display:none;">
+  <div class="modal">
+    <h3>Heads up — searching is expensive</h3>
+    <p>
+      A single search costs about <b style="color:var(--amber);">101 quota units</b> against your YouTube Data API key.
+      A default key gets <b>10,000 units per day</b>, which works out to roughly <b>99 searches</b> — and that same
+      allowance is shared with every channel refresh Channel Deck makes.
+    </p>
+    <p>
+      To stretch it, each search pulls a full page of 50 results at once. "Show me more" reveals the next 10 from
+      that batch for free, and only spends quota again once the batch runs out. Content type, minimum views, and the
+      live-stream toggle also re-filter for free.
+    </p>
+    <label class="filter-check" style="margin-bottom:16px;">
+      <input type="checkbox" id="quotaDontShow"> Don't show this warning again
+    </label>
+    <div class="modal-actions">
+      <button class="ghost" id="quotaCancel">Cancel</button>
+      <button class="primary" id="quotaConfirm">Search anyway</button>
+    </div>
+  </div>
 </div>
 
 <!-- Settings Modal -->
@@ -137,7 +278,7 @@
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
       <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.15</span>
-      <button class="primary" id="settingsClose">Close & Save</button>
+      <button class="primary" id="settingsClose">Close &amp; Save</button>
     </div>
   </div>
 </div>
@@ -152,39 +293,11 @@
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 31, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
-        <li>Added the Search tab: search YouTube by a term plus optional tags, with results ranked by view count.</li>
-        <li>Search filters for sort order, upload time range, long-form vs Shorts, minimum views, region, language, and hiding live streams.</li>
-        <li>Each search pulls a full 50-result page at once, so "Show me more" reveals the next 10 for free and only spends quota once the batch runs out.</li>
-        <li>A one-time warning now appears before your first search, explaining that a search costs roughly 101 of a key's 10,000 daily quota units.</li>
-        <li>Added a daily search quota meter, and results can be added straight to Competitors from the search list.</li>
-      </ul>
-    </div>
-
-    <div style="margin-bottom: 16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.14</h4>
-        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">August 11, 2026</span>
-      </div>
-      <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
-        <li>Split the single 3,000-line file into a proper multi-page site. See the Tab List page changelog for the full list of fixes in this release.</li>
+        <li>Added the Search tab — search YouTube by term plus tags, ranked by views, with filters and a quota-aware "Show me more".</li>
       </ul>
     </div>
     <div class="modal-actions">
       <button class="primary" id="changelogClose">Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="addOverlay" style="display:none;">
-  <div class="modal">
-    <h3 id="addOverlayTitle">Add a competitor</h3>
-    <p>Paste a channel @handle (e.g. <span class="num">@mkbhd</span>), a full channel URL, or a channel ID (starts with UC).</p>
-    <label for="channelInput">Channel</label>
-    <input type="text" id="channelInput" placeholder="@yourchannel" autocomplete="off">
-    <div class="modal-error" id="addError" style="display:none;"></div>
-    <div class="modal-actions">
-      <button class="ghost" id="addCancel">Cancel</button>
-      <button class="primary" id="addConfirm">Add</button>
     </div>
   </div>
 </div>
@@ -214,6 +327,6 @@
 <script src="../assets/state.js"></script>
 <script src="../assets/api.js"></script>
 <script src="../assets/ui.js"></script>
-<script src="../assets/competitors.js"></script>
+<script src="../assets/search.js"></script>
 </body>
 </html>
