@@ -189,6 +189,25 @@
 
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
+        <span class="v">V0.19</span>
+        <span class="d">September 1, 2026</span>
+      </div>
+      <ul>
+        <li>Rebuilt search around four modes: <b>Search + Tags</b>, <b>Search</b>, <b>Tags</b>, and <b>Creators</b>. The mode switch now sits at the top of the panel and shows or hides the bars each mode actually uses.</li>
+        <li><b>Search</b> runs on the term alone and ignores tags entirely.</li>
+        <li><b>Tags</b> searches by tags alone, with the term bar hidden.</li>
+        <li>Tag searches now widen to similar tags. The first page of results is read for the tags those videos actually carry, and a second search runs on the tags that appear alongside yours — so "sourdough" also finds videos tagged "artisan bread" or "no knead".</li>
+        <li>A tag found on only one video is ignored as noise rather than treated as a pattern.</li>
+        <li>The similar tags used are listed on screen, so it is clear what the search actually ran on.</li>
+        <li>Widening is controlled by "Widen to similar tags" in Filters. It runs a second search, which roughly doubles what a search costs, and turning it off returns to the old single-search cost.</li>
+        <li>Harvesting those tags is free — it reads videos already fetched for display, so the only extra cost is the second search itself.</li>
+        <li>"Show me more" now pages whichever search still has results left, so widened searches keep paging through both sets.</li>
+        <li>The Search button moved to its own row so it stays reachable in every mode.</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
         <span class="v">V0.18</span>
         <span class="d">September 1, 2026</span>
       </div>

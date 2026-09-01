@@ -39,7 +39,34 @@ const PROFILE_TERM_COUNT = 5;          // derived terms fed into the query
 // fills up with "the", "video", "new", "official" and matches everything.
 const PROFILE_STOPWORDS = new Set(('a об the and or but if then than that this these those there here what which who whom whose when where why how all any both each few more most other some such no nor not only own same so too very can will just don should now i me my we our you your he him his she her it its they them their am is are was were be been being have has had having do does did doing would could shall may might must of at by for with about against between into through during before after above below to from up down in out on off over under again further once video videos new official full hd 4k part ep episode vs feat ft featuring the best top get make made makes making how why what when who does did you your my our this that with without like just really very more most all every some any thing things stuff really actually literally basically going gonna want wanted need needed let lets going im ive dont doesnt didnt cant wont isnt arent wasnt werent one two three first last next final live stream vlog shorts short subscribe channel watch watching').split(' '));
 
-let searchMode = 'tags';       // 'tags' | 'creators'
+// The four search modes. They differ in which bars feed the query:
+//   search_tags — main term AND tags, tags expanded to similar ones
+//   search_only — main term alone, tag bar hidden
+//   tags_only   — tags alone, expanded to similar ones, main box hidden
+//   creators    — model up to three creators and find others like them
+const MODES = [
+  { id: 'search_tags', label: 'Search + Tags' },
+  { id: 'search_only', label: 'Search' },
+  { id: 'tags_only',   label: 'Tags' },
+  { id: 'creators',    label: 'Creators' }
+];
+
+function modeUsesSearchBox(m){ return m !== 'tags_only'; }
+function modeUsesSecondBar(m){ return m !== 'search_only'; }
+function modeIsCreators(m){ return m === 'creators'; }
+// Tag expansion only makes sense where the user actually supplied tags.
+function modeCanExpandTags(m){ return m === 'search_tags' || m === 'tags_only'; }
+
+let searchMode = 'search_tags';
+
+// Tags harvested from the first page of results, used to widen the search to
+// videos carrying similar tags rather than only the exact ones typed.
+let relatedTags = null;
+
+// Each paid search.list call the current query fans out into. Tag expansion
+// produces two: one for the exact tags, one for the similar ones. "Show me
+// more" pages whichever still has results left.
+let searchSources = [];
 let searchCreators = [];       // raw strings the user typed
 let creatorResolveCache = {};  // raw -> {id, title} (avoids paying to resolve twice)
 let creatorProfile = null;     // derived style profile, reused while paging
@@ -64,6 +91,9 @@ const modeSwitch       = document.getElementById('modeSwitch');
 const modeHint         = document.getElementById('modeHint');
 const tagField         = document.getElementById('tagField');
 const creatorProfileEl = document.getElementById('creatorProfile');
+const searchRow        = document.getElementById('searchRow');
+const tagRow           = document.getElementById('tagRow');
+const fExpandTags      = document.getElementById('fExpandTags');
 
 const fOrder    = document.getElementById('fOrder');
 const fTime     = document.getElementById('fTime');
@@ -86,19 +116,19 @@ const DEFAULT_FILTERS = {
   minViews: 0,
   region: 'any',
   language: 'any',
-  noLive: true
+  noLive: true,
+  expandTags: true
 };
 
 // Filters YouTube applies server-side. Changing any of these means the current
 // pool is stale and a new paid search is required.
-const API_FILTERS = ['order', 'time', 'region', 'language'];
+const API_FILTERS = ['order', 'time', 'region', 'language', 'expandTags'];
 
 let searchFilters = { ...DEFAULT_FILTERS };
 let searchTags = [];
 let pool = [];             // every result fetched so far, in display order
 let seenIds = new Set();   // dedupe across pages
 let shownCount = 0;        // how many of the filtered pool are on screen
-let nextPageToken = null;
 let filtersDirty = false;
 let searching = false;
 let lastRunQuery = '';
@@ -139,7 +169,10 @@ function loadSearchState(){
 
   try {
     const m = localStorage.getItem('channelDeck_searchMode');
-    if (m === 'tags' || m === 'creators') searchMode = m;
+    // 'tags' was the old combined term-plus-tags mode, which is now
+    // 'search_tags'. The new 'tags_only' is a different thing.
+    if (m === 'tags') searchMode = 'search_tags';
+    else if (MODES.some(x => x.id === m)) searchMode = m;
   } catch(e){}
 
 }
@@ -152,12 +185,12 @@ function loadSearchState(){
 // Both lists are kept in storage, so flipping between modes doesn't lose what
 // was typed in the other one.
 function renderTags(){
-  const items = searchMode === 'creators' ? searchCreators : searchTags;
+  const items = modeIsCreators(searchMode) ? searchCreators : searchTags;
   tagChips.innerHTML = '';
 
   items.forEach((val, i) => {
     const chip = document.createElement('span');
-    if (searchMode === 'creators') {
+    if (modeIsCreators(searchMode)) {
       const pricey = !isCheapCreatorLookup(val);
       chip.className = 'tag-chip creator' + (pricey ? ' pricey' : '');
       chip.title = pricey
@@ -175,7 +208,7 @@ function renderTags(){
   tagChips.querySelectorAll('[data-tag-remove]').forEach(btn => {
     btn.onclick = () => {
       const idx = Number(btn.dataset.tagRemove);
-      if (searchMode === 'creators') {
+      if (modeIsCreators(searchMode)) {
         searchCreators.splice(idx, 1);
         saveSearchCreators();
         creatorProfile = null;           // profile no longer matches the seeds
@@ -191,24 +224,37 @@ function renderTags(){
   });
 }
 
-// Placeholder, hint text and the input's disabled state all follow the mode.
+// Which bars are shown, what they're labelled, and the explanatory hint all
+// follow the selected mode.
 function renderModeUI(){
   modeSwitch.querySelectorAll('.mode-opt').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === searchMode);
   });
-  tagField.classList.toggle('creators-mode', searchMode === 'creators');
 
-  if (searchMode === 'creators') {
+  searchRow.style.display = modeUsesSearchBox(searchMode) ? 'flex' : 'none';
+  tagRow.style.display    = modeUsesSecondBar(searchMode) ? 'flex' : 'none';
+  tagField.classList.toggle('creators-mode', modeIsCreators(searchMode));
+
+  if (modeIsCreators(searchMode)) {
     const full = searchCreators.length >= MAX_CREATORS;
+    searchInput.placeholder = 'Optional — narrow to a subject within their niche';
     tagInput.placeholder = full
       ? `Maximum ${MAX_CREATORS} creators — remove one to add another.`
       : '@handle, channel URL or name — press Enter after each.';
     tagInput.disabled = full;
     modeHint.innerHTML = `Finds other creators making content like these. One creator gives the sharpest results; adding more widens the net, since only traits they <b>share</b> survive. Videos from the seeds themselves are excluded. Use an @handle or URL — a bare name costs ~100 extra units to look up.`;
   } else {
+    searchInput.placeholder = 'Search a word or term…';
     tagInput.placeholder = 'Tags — press Enter after each. Prefix with “-” to exclude.';
     tagInput.disabled = false;
-    modeHint.innerHTML = `Tags narrow the search term above. Prefix a tag with <b>-</b> to exclude it; multi-word tags are matched as exact phrases.`;
+
+    if (searchMode === 'search_only') {
+      modeHint.innerHTML = `Plain search on the term above. Tags are ignored in this mode, so nothing is widened and a search costs about <b>${SEARCH_COST + DETAIL_COST}</b> quota units.`;
+    } else if (searchMode === 'tags_only') {
+      modeHint.innerHTML = `Searches by tags alone. Results carry the tags you type, and with <b>Widen to similar tags</b> on it also pulls videos tagged with terms that appear alongside yours.`;
+    } else {
+      modeHint.innerHTML = `Term and tags together — tags narrow the term above. Prefix a tag with <b>-</b> to exclude it, and multi-word tags are matched as exact phrases.`;
+    }
   }
   modeHint.style.display = 'block';
 }
@@ -217,7 +263,7 @@ function addTagsFromInput(){
   const raw = tagInput.value;
   if (!raw.trim()) return;
 
-  if (searchMode === 'creators') {
+  if (modeIsCreators(searchMode)) {
     let rejected = false;
     raw.split(',').forEach(part => {
       const name = part.trim();
@@ -251,29 +297,77 @@ function addTagsFromInput(){
   markFiltersDirty();
 }
 
-function buildQuery(){
-  const parts = [];
-  const base = searchInput.value.trim();
-  if (base) parts.push(base);
 
-  // In Creators mode the query comes from the derived profile rather than
-  // typed tags. Anything in the main box still applies, so it can be used to
-  // narrow "creators like X" down to a specific subject.
-  if (searchMode === 'creators') {
-    if (creatorProfile) parts.push(...creatorProfile.terms);
-    return parts.join(' ').trim();
-  }
+// --- Tag expansion ---
+// Same idea as creator profiling, applied to tags instead of channels: read the
+// tags that real videos carry and use them to widen the net.
+//
+// When a search runs on tags, the first page of results is already paid for and
+// every one of those videos carries its own tag list. Harvesting those gives a
+// set of tags that co-occur with what was typed — "sourdough" surfaces "artisan
+// bread", "baking", "no knead". Searching that second set finds videos tagged
+// similarly rather than only the exact words entered.
+const RELATED_TAG_COUNT = 6;
 
-  searchTags.forEach(tag => {
-    if (tag.startsWith('-')) {
-      const body = tag.slice(1).trim();
-      if (!body) return;
-      parts.push(body.includes(' ') ? `-"${body}"` : `-${body}`);
-    } else {
-      parts.push(tag.includes(' ') ? `"${tag}"` : tag);
-    }
+function harvestRelatedTags(videos, seedTerms){
+  // The seeds themselves aren't "related" — they're what was already searched.
+  const banned = new Set();
+  seedTerms.forEach(s => {
+    const n = normaliseTerm(s.replace(/^-/, ''));
+    if (n) banned.add(n);
+    n.split(' ').forEach(w => { if (w) banned.add(w); });
   });
-  return parts.join(' ').trim();
+
+  const counts = {};
+  const docs = {};
+  videos.forEach(v => {
+    const seen = new Set();
+    (v.snippet && v.snippet.tags || []).forEach(tag => {
+      const term = normaliseTerm(tag);
+      // Counted once per video so one keyword-stuffed upload can't dominate.
+      if (!term || seen.has(term)) return;
+      if (!usefulTerm(term, banned)) return;
+      seen.add(term);
+      counts[term] = (counts[term] || 0) + 1;
+      docs[term] = (docs[term] || 0) + 1;
+    });
+  });
+
+  // A tag appearing on only one video out of fifty is noise, not a pattern.
+  const ranked = Object.keys(counts)
+    .filter(term => docs[term] >= 2)
+    .sort((a, b) => counts[b] - counts[a]);
+
+  // Prefer descriptive phrases, and skip near-duplicates of what's picked.
+  const phrases = ranked.filter(x => x.includes(' '));
+  const singles = ranked.filter(x => !x.includes(' '));
+  const picked = [];
+  const usedWords = new Set();
+  [...phrases, ...singles].forEach(term => {
+    if (picked.length >= RELATED_TAG_COUNT) return;
+    const words = term.split(' ');
+    if (words.every(w => usedWords.has(w))) return;
+    words.forEach(w => usedWords.add(w));
+    picked.push(term);
+  });
+
+  return picked;
+}
+
+function renderRelatedTags(){
+  const el = document.getElementById('relatedTags');
+  if (!el) return;
+  if (!relatedTags || !relatedTags.related.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="creator-profile-head">Also searched these similar tags
+      <span class="creator-profile-sub">found on ${relatedTags.sampled} videos matching your tags</span>
+    </div>
+    <div class="creator-profile-terms">
+      ${relatedTags.related.map(term => `<span class="profile-term related">${escapeHTML(term)}</span>`).join('')}
+    </div>
+    <div class="creator-profile-note">Turn off "Widen to similar tags" in Filters to search only the exact tags you typed, which costs half as much quota.</div>
+  `;
 }
 
 // --- Creators mode: resolution and style profiling ---
@@ -484,7 +578,7 @@ async function buildCreatorProfile(){
 
 function renderCreatorProfile(){
   if (!creatorProfileEl) return;
-  if (searchMode !== 'creators' || !creatorProfile) {
+  if (!modeIsCreators(searchMode) || !creatorProfile) {
     creatorProfileEl.style.display = 'none';
     return;
   }
@@ -510,6 +604,7 @@ function readFiltersFromUI(){
   searchFilters.region   = fRegion.value;
   searchFilters.language = fLanguage.value;
   searchFilters.noLive   = fNoLive.checked;
+  searchFilters.expandTags = fExpandTags.checked;
   saveSearchFilters();
 }
 
@@ -521,6 +616,7 @@ function writeFiltersToUI(){
   fRegion.value   = searchFilters.region;
   fLanguage.value = searchFilters.language;
   fNoLive.checked = searchFilters.noLive !== false;
+  fExpandTags.checked = searchFilters.expandTags !== false;
 }
 
 function markFiltersDirty(){
@@ -636,12 +732,17 @@ function passesLocalFilters(r){
   if (searchFilters.noLive !== false && r.isLive) return false;
   // The whole point of Creators mode is finding *other* people making similar
   // content, so the seed creators' own uploads are dropped.
-  if (searchMode === 'creators' && creatorProfile && creatorProfile.seedIds.has(r.channelId)) return false;
+  if (modeIsCreators(searchMode) && creatorProfile && creatorProfile.seedIds.has(r.channelId)) return false;
   return true;
 }
 
 function filteredPool(){
   return pool.filter(passesLocalFilters);
+}
+
+// True while any of the current query's sources still has a page left.
+function hasMoreFromApi(){
+  return searchSources.some(s => s.pageToken);
 }
 
 // --- Rendering ---
@@ -733,7 +834,7 @@ function renderResults(){
     showMoreBtn.textContent = 'Show me more';
     showMoreBtn.disabled = false;
     showMoreNote.textContent = `${results.length - shownCount} more already loaded — free, no quota used.`;
-  } else if (nextPageToken) {
+  } else if (hasMoreFromApi()) {
     showMoreWrap.style.display = 'block';
     showMoreBtn.textContent = 'Load more from YouTube';
     showMoreBtn.disabled = false;
@@ -754,13 +855,132 @@ function setStatus(html, tone){
 }
 
 // --- The actual search ---
+// The query built from the bars the current mode actually uses.
+function buildPrimaryQuery(){
+  const parts = [];
+  const base = searchInput.value.trim();
+
+  if (modeIsCreators(searchMode)) {
+    if (base) parts.push(base);
+    if (creatorProfile) parts.push(...creatorProfile.terms);
+    return parts.join(' ').trim();
+  }
+
+  if (modeUsesSearchBox(searchMode) && base) parts.push(base);
+
+  if (modeUsesSecondBar(searchMode) && !modeIsCreators(searchMode)) {
+    searchTags.forEach(tag => {
+      if (tag.startsWith('-')) {
+        const body = tag.slice(1).trim();
+        if (!body) return;
+        parts.push(body.includes(' ') ? `-"${body}"` : `-${body}`);
+      } else {
+        parts.push(tag.includes(' ') ? `"${tag}"` : tag);
+      }
+    });
+  }
+
+  return parts.join(' ').trim();
+}
+
+// Kept for compatibility with anything still calling buildQuery().
+function buildQuery(){ return buildPrimaryQuery(); }
+
+function whatIsMissing(){
+  if (modeIsCreators(searchMode) && !searchCreators.length) {
+    return 'Add at least one creator to model, or switch to another mode.';
+  }
+  if (searchMode === 'tags_only' && !searchTags.length) {
+    return 'Add at least one tag. Switch to Search or Search + Tags if you want to type a term instead.';
+  }
+  if (searchMode === 'search_only' && !searchInput.value.trim()) {
+    return 'Type a search term. Switch to Tags if you want to search by tags instead.';
+  }
+  if (searchMode === 'search_tags' && !searchInput.value.trim() && !searchTags.length) {
+    return 'Type a search term or add at least one tag before searching.';
+  }
+  return null;
+}
+
+// Turns one search.list response plus its videos.list detail into pool entries.
+// Returns the raw API video items too, so tag expansion can read their tags
+// without paying for a second lookup.
+async function runSearchSource(source){
+  const params = new URLSearchParams({
+    part: 'snippet',
+    type: 'video',
+    maxResults: String(FETCH_SIZE),
+    order: searchFilters.order,
+    q: source.q
+  });
+
+  const days = TIME_RANGE_DAYS[searchFilters.time];
+  if (days) params.set('publishedAfter', new Date(Date.now() - days * 86400000).toISOString());
+  if (searchFilters.region !== 'any') params.set('regionCode', searchFilters.region);
+  if (searchFilters.language !== 'any') params.set('relevanceLanguage', searchFilters.language);
+  // Creator searches stay inside the category the seeds actually publish in,
+  // which stops the derived terms drifting into an unrelated niche.
+  if (source.categoryId) params.set('videoCategoryId', source.categoryId);
+  if (source.pageToken) params.set('pageToken', source.pageToken);
+
+  const data = await fetchWithFallback(key =>
+    `https://www.googleapis.com/youtube/v3/search?${params.toString()}&key=${key}`);
+
+  source.pageToken = data.nextPageToken || null;
+
+  const ids = (data.items || [])
+    .map(i => i.id && i.id.videoId)
+    .filter(id => id && !seenIds.has(id));
+
+  if (!ids.length) return [];
+
+  const det = await fetchWithFallback(key =>
+    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,player&id=${ids.join(',')}&maxWidth=${PLAYER_PROBE_WIDTH}&key=${key}`);
+
+  const items = det.items || [];
+  const fresh = items.map(v => {
+    const th = v.snippet.thumbnails || {};
+    const thumb = (th.maxres && th.maxres.url) || (th.high && th.high.url)
+               || (th.medium && th.medium.url) || (th.default && th.default.url) || '';
+    const duration = parseISODuration(v.contentDetails && v.contentDetails.duration);
+    const aspect = parsePlayerAspect(v.player);
+    const cls = classifyShort(duration, aspect);
+    return {
+      id: v.id,
+      title: v.snippet.title,
+      channelId: v.snippet.channelId,
+      channelTitle: v.snippet.channelTitle,
+      publishedAt: v.snippet.publishedAt,
+      thumb,
+      duration,
+      isShort: cls.isShort,
+      aspectKnown: cls.aspectKnown,
+      aspect,
+      isLive: v.snippet.liveBroadcastContent && v.snippet.liveBroadcastContent !== 'none',
+      views: Number(v.statistics.viewCount || 0),
+      likes: v.statistics.likeCount === undefined ? null : Number(v.statistics.likeCount),
+      comments: v.statistics.commentCount === undefined ? null : Number(v.statistics.commentCount),
+      via: source.label
+    };
+  });
+
+  fresh.forEach(r => seenIds.add(r.id));
+
+  // videos.list doesn't preserve the search's ranking, so re-apply the chosen
+  // sort to just the newly-arrived batch. Already-visible results keep their
+  // position instead of reshuffling under the reader.
+  if (searchFilters.order === 'viewCount')  fresh.sort((a, b) => b.views - a.views);
+  else if (searchFilters.order === 'date')  fresh.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+
+  pool = pool.concat(fresh);
+  return items;
+}
+
 async function executeSearch(append){
   if (searching) return;
 
-  if (searchMode === 'creators' && !searchCreators.length) {
-    setStatus('Add at least one creator to model, or switch back to Tags mode.', 'error');
-    return;
-  }
+  const missing = whatIsMissing();
+  if (missing) { setStatus(missing, 'error'); return; }
   if (!hasApiKey()) { openKeyModal(); return; }
 
   searching = true;
@@ -768,9 +988,9 @@ async function executeSearch(append){
   showMoreBtn.disabled = true;
   setStatus('Searching YouTube…', 'busy');
 
-  // The profile is derived once and reused while paging, so "load more" doesn't
-  // pay to re-read the creators' uploads every time.
-  if (searchMode === 'creators' && (!append || !creatorProfile)) {
+  // The creator profile is derived once and reused while paging, so "load more"
+  // doesn't pay to re-read the creators' uploads every time.
+  if (modeIsCreators(searchMode) && (!append || !creatorProfile)) {
     try {
       creatorProfile = await buildCreatorProfile();
       renderCreatorProfile();
@@ -782,90 +1002,57 @@ async function executeSearch(append){
     }
   }
 
-  const q = buildQuery();
-  if (!q) {
-    setStatus('Type a search term, or add at least one tag, before searching.', 'error');
-    searching = false;
-    searchBtn.disabled = false;
-    return;
-  }
-
   if (!append) {
     pool = [];
     seenIds = new Set();
     shownCount = 0;
-    nextPageToken = null;
+    searchSources = [];
+    relatedTags = null;
+    renderRelatedTags();
     searchResults.innerHTML = '';
     showMoreWrap.style.display = 'none';
     searchEmpty.style.display = 'none';
-    lastRunQuery = q;
   }
 
   try {
-    const params = new URLSearchParams({
-      part: 'snippet',
-      type: 'video',
-      maxResults: String(FETCH_SIZE),
-      order: searchFilters.order,
-      q
-    });
+    if (!append) {
+      const q = buildPrimaryQuery();
+      if (!q) {
+        setStatus('Nothing to search for yet.', 'error');
+        searching = false;
+        searchBtn.disabled = false;
+        return;
+      }
+      lastRunQuery = q;
 
-    const days = TIME_RANGE_DAYS[searchFilters.time];
-    if (days) params.set('publishedAfter', new Date(Date.now() - days * 86400000).toISOString());
-    if (searchFilters.region !== 'any') params.set('regionCode', searchFilters.region);
-    // Pin creator-mode searches to the category the seeds actually publish in,
-    // which keeps the derived terms from drifting into an unrelated niche.
-    if (searchMode === 'creators' && creatorProfile && creatorProfile.categoryId) {
-      params.set('videoCategoryId', creatorProfile.categoryId);
-    }
-    if (searchFilters.language !== 'any') params.set('relevanceLanguage', searchFilters.language);
-    if (append && nextPageToken) params.set('pageToken', nextPageToken);
+      const primary = {
+        label: modeCanExpandTags(searchMode) ? 'your tags' : 'your search',
+        q,
+        categoryId: (modeIsCreators(searchMode) && creatorProfile) ? creatorProfile.categoryId : null,
+        pageToken: null
+      };
+      searchSources = [primary];
 
-    const data = await fetchWithFallback(key =>
-      `https://www.googleapis.com/youtube/v3/search?${params.toString()}&key=${key}`);
-    nextPageToken = data.nextPageToken || null;
+      const primaryItems = await runSearchSource(primary);
 
-    const ids = (data.items || [])
-      .map(i => i.id && i.id.videoId)
-      .filter(id => id && !seenIds.has(id));
-
-    if (ids.length) {
-      const det = await fetchWithFallback(key =>
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,player&id=${ids.join(',')}&maxWidth=${PLAYER_PROBE_WIDTH}&key=${key}`);
-      const fresh = (det.items || []).map(v => {
-        const t = v.snippet.thumbnails || {};
-        const thumb = (t.maxres && t.maxres.url) || (t.high && t.high.url)
-                   || (t.medium && t.medium.url) || (t.default && t.default.url) || '';
-        const duration = parseISODuration(v.contentDetails && v.contentDetails.duration);
-        const aspect = parsePlayerAspect(v.player);
-        const cls = classifyShort(duration, aspect);
-        return {
-          id: v.id,
-          title: v.snippet.title,
-          channelId: v.snippet.channelId,
-          channelTitle: v.snippet.channelTitle,
-          publishedAt: v.snippet.publishedAt,
-          thumb,
-          duration,
-          isShort: cls.isShort,
-          aspectKnown: cls.aspectKnown,
-          aspect,
-          isLive: v.snippet.liveBroadcastContent && v.snippet.liveBroadcastContent !== 'none',
-          views: Number(v.statistics.viewCount || 0),
-          likes: v.statistics.likeCount === undefined ? null : Number(v.statistics.likeCount),
-          comments: v.statistics.commentCount === undefined ? null : Number(v.statistics.commentCount)
-        };
-      });
-
-      fresh.forEach(r => seenIds.add(r.id));
-
-      // videos.list doesn't preserve the search's ranking, so re-apply the
-      // chosen sort to just the newly-arrived batch. Already-visible results
-      // keep their position instead of reshuffling under the reader.
-      if (searchFilters.order === 'viewCount')  fresh.sort((a, b) => b.views - a.views);
-      else if (searchFilters.order === 'date')  fresh.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-
-      pool = pool.concat(fresh);
+      // Widen to similar tags using the tags those first results carry. The
+      // harvest is free — those videos were already fetched for display — so
+      // the only extra cost is the second search itself.
+      if (modeCanExpandTags(searchMode) && searchFilters.expandTags && searchTags.length) {
+        setStatus('Looking for videos with similar tags…', 'busy');
+        const related = harvestRelatedTags(primaryItems, searchTags);
+        if (related.length) {
+          relatedTags = { seeds: [...searchTags], related, sampled: primaryItems.length };
+          renderRelatedTags();
+          const widened = { label: 'similar tags', q: related.join(' '), categoryId: null, pageToken: null };
+          searchSources.push(widened);
+          await runSearchSource(widened);
+        }
+      }
+    } else {
+      // Page whichever source still has results left.
+      const src = searchSources.find(s => s.pageToken);
+      if (src) await runSearchSource(src);
     }
 
     clearFiltersDirty();
@@ -874,15 +1061,15 @@ async function executeSearch(append){
     const total = filteredPool().length;
     if (!total && !pool.length) {
       searchEmpty.style.display = 'block';
-      searchEmpty.innerHTML = `<h2>No results</h2><p>YouTube returned nothing for <b>${escapeHTML(q)}</b>. Try broader wording or fewer tags.</p>`;
+      searchEmpty.innerHTML = `<h2>No results</h2><p>YouTube returned nothing for <b>${escapeHTML(lastRunQuery)}</b>. Try broader wording or fewer tags.</p>`;
       setStatus('', '');
+    } else if (modeIsCreators(searchMode) && creatorProfile) {
+      const names = creatorProfile.creators.map(c => escapeHTML(c.title)).join(', ');
+      setStatus(`Creators like <b>${names}</b> — ${pool.length} result${pool.length === 1 ? '' : 's'} loaded, ${total} after filtering out their own uploads.`, 'ok');
     } else {
-      if (searchMode === 'creators' && creatorProfile) {
-        const names = creatorProfile.creators.map(c => escapeHTML(c.title)).join(', ');
-        setStatus(`Creators like <b>${names}</b> — ${pool.length} result${pool.length === 1 ? '' : 's'} loaded, ${total} after filtering out their own uploads.`, 'ok');
-      } else {
-        setStatus(`Searched for <b>${escapeHTML(q)}</b> — ${pool.length} result${pool.length === 1 ? '' : 's'} loaded, ${total} matching your filters.`, 'ok');
-      }
+      const widened = relatedTags && relatedTags.related.length
+        ? `, widened to ${relatedTags.related.length} similar tag${relatedTags.related.length === 1 ? '' : 's'}` : '';
+      setStatus(`Searched for <b>${escapeHTML(lastRunQuery)}</b>${widened} — ${pool.length} result${pool.length === 1 ? '' : 's'} loaded, ${total} matching your filters.`, 'ok');
     }
     renderResults();
 
@@ -946,7 +1133,7 @@ tagInput.addEventListener('keydown', e => {
     e.preventDefault();
     addTagsFromInput();
   } else if (e.key === 'Backspace' && !tagInput.value) {
-    if (searchMode === 'creators' && searchCreators.length) {
+    if (modeIsCreators(searchMode) && searchCreators.length) {
       searchCreators.pop();
       saveSearchCreators();
       creatorProfile = null;
@@ -970,7 +1157,7 @@ showMoreBtn.onclick = () => {
     // Free reveal — these are already in the pool.
     shownCount += REVEAL_SIZE;
     renderResults();
-  } else if (nextPageToken) {
+  } else if (hasMoreFromApi()) {
     requestSearch(true);
   }
 };
@@ -985,6 +1172,7 @@ modeSwitch.querySelectorAll('.mode-opt').forEach(btn => {
     renderTags();
     renderModeUI();
     renderCreatorProfile();
+    renderRelatedTags();
     markFiltersDirty();
     setStatus('', '');
   };
@@ -996,7 +1184,7 @@ filtersToggle.onclick = () => {
   filtersToggle.textContent = open ? 'Filters ▾' : 'Filters ▴';
 };
 
-[fOrder, fTime, fType, fMinViews, fRegion, fLanguage, fNoLive].forEach(el => {
+[fOrder, fTime, fType, fMinViews, fRegion, fLanguage, fNoLive, fExpandTags].forEach(el => {
   el.addEventListener('change', () => {
     const before = { ...searchFilters };
     readFiltersFromUI();
@@ -1030,5 +1218,6 @@ writeFiltersToUI();
 renderTags();
 renderModeUI();
 renderCreatorProfile();
+renderRelatedTags();
 initCommonPage(null, { autoRefresh: false });
 searchInput.focus();

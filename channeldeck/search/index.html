@@ -42,28 +42,34 @@
 
   <div class="search-panel">
     <div class="search-row">
-      <input type="text" id="searchInput" class="search-field" placeholder="Search a word or term…" autocomplete="off" spellcheck="false">
-      <button class="primary search-go" id="searchBtn">Search</button>
-    </div>
-
-    <div class="search-row">
-      <div class="mode-switch" id="modeSwitch" role="group" aria-label="Second bar mode">
-        <button type="button" class="mode-opt active" data-mode="tags">Tags</button>
+      <div class="mode-switch" id="modeSwitch" role="group" aria-label="Search mode">
+        <button type="button" class="mode-opt active" data-mode="search_tags">Search + Tags</button>
+        <button type="button" class="mode-opt" data-mode="search_only">Search</button>
+        <button type="button" class="mode-opt" data-mode="tags_only">Tags</button>
         <button type="button" class="mode-opt" data-mode="creators">Creators</button>
       </div>
+      <button class="ghost search-go" id="filtersToggle">Filters ▾</button>
     </div>
 
-    <div class="search-row">
+    <div class="search-row" id="searchRow">
+      <input type="text" id="searchInput" class="search-field" placeholder="Search a word or term…" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="search-row" id="tagRow">
       <div class="tag-field" id="tagField">
         <div class="tag-chips" id="tagChips" style="display:none;"></div>
         <input type="text" id="tagInput" class="search-field tag-input" placeholder="Tags — press Enter after each. Prefix with “-” to exclude." autocomplete="off" spellcheck="false">
       </div>
-      <button class="ghost search-go" id="filtersToggle">Filters ▾</button>
+    </div>
+
+    <div class="search-row search-action-row">
+      <button class="primary search-go" id="searchBtn">Search</button>
     </div>
 
     <div class="mode-hint" id="modeHint"></div>
 
     <div class="creator-profile" id="creatorProfile" style="display:none;"></div>
+    <div class="creator-profile" id="relatedTags" style="display:none;"></div>
 
     <div class="filters-panel" id="filtersPanel" style="display:none;">
       <div class="filter-cell">
@@ -147,11 +153,12 @@
 
       <div class="filter-cell filter-cell-wide">
         <label class="filter-check"><input type="checkbox" id="fNoLive"> Hide live streams and premieres</label>
+        <label class="filter-check"><input type="checkbox" id="fExpandTags"> Widen to similar tags</label>
         <button class="ghost" id="resetFiltersBtn" style="padding:6px 12px; font-size:12px;">Reset filters</button>
       </div>
 
       <div class="filter-note filter-cell-wide">
-        Sort, time range, region, and language are applied by YouTube, so changing them needs a fresh search. Content type, minimum views, and the live-stream toggle are applied locally and cost nothing. Shorts are identified by being both under 3 minutes <em>and</em> vertical, so a short landscape upload correctly counts as long-form.
+        Sort, time range, region, and language are applied by YouTube, so changing them needs a fresh search. Content type, minimum views, and the live-stream toggle are applied locally and cost nothing. Shorts are identified by being both under 3 minutes <em>and</em> vertical, so a short landscape upload correctly counts as long-form. "Widen to similar tags" runs a second search on tags found alongside yours, which doubles the quota a search costs.
       </div>
     </div>
 
@@ -224,6 +231,11 @@
       To stretch it, each search pulls a full page of 50 results at once. "Show me more" reveals the next 10 from
       that batch for free, and only spends quota again once the batch runs out. Content type, minimum views, and the
       live-stream toggle also re-filter for free.
+    </p>
+    <p>
+      Two modes cost more. <b>Widen to similar tags</b> runs a second search on related tags, roughly doubling the
+      cost, and <b>Creators</b> spends a few extra units reading each creator's uploads. Both can be turned off or
+      avoided in Filters and the mode switch.
     </p>
     <label class="filter-check" style="margin-bottom:16px;">
       <input type="checkbox" id="quotaDontShow"> Don't show this warning again
@@ -304,7 +316,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.18</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.19</span>
       <button class="primary" id="settingsClose">Close &amp; Save</button>
     </div>
   </div>
@@ -316,7 +328,26 @@
     <h3 style="margin-bottom: 20px;">Changelog</h3>
     <div style="margin-bottom: 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.18</h4>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.19</h4>
+        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">September 1, 2026</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Rebuilt search around four modes: <b>Search + Tags</b>, <b>Search</b>, <b>Tags</b>, and <b>Creators</b>. The mode switch now sits at the top of the panel and shows or hides the bars each mode actually uses.</li>
+        <li><b>Search</b> runs on the term alone and ignores tags entirely.</li>
+        <li><b>Tags</b> searches by tags alone, with the term bar hidden.</li>
+        <li>Tag searches now widen to similar tags. The first page of results is read for the tags those videos actually carry, and a second search runs on the tags that appear alongside yours — so "sourdough" also finds videos tagged "artisan bread" or "no knead".</li>
+        <li>A tag found on only one video is ignored as noise rather than treated as a pattern.</li>
+        <li>The similar tags used are listed on screen, so it is clear what the search actually ran on.</li>
+        <li>Widening is controlled by "Widen to similar tags" in Filters. It runs a second search, which roughly doubles what a search costs, and turning it off returns to the old single-search cost.</li>
+        <li>Harvesting those tags is free — it reads videos already fetched for display, so the only extra cost is the second search itself.</li>
+        <li>"Show me more" now pages whichever search still has results left, so widened searches keep paging through both sets.</li>
+        <li>The Search button moved to its own row so it stays reachable in every mode.</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.18</h4>
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">September 1, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
