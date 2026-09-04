@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Secret Code — BiteSterxBeast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="../favicon.png">
+<meta name="theme-color" content="#34D6C4">
+<meta name="robots" content="noindex">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0B0D10;
+    --panel:#14171C;
+    --panel-2:#1B1F26;
+    --line:#262B33;
+    --text:#E8EAED;
+    --muted:#8A93A1;
+    --dim:#5A626F;
+    --teal:#34D6C4;
+    --amber:#F2B84B;
+    --live:#FF4B3E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at 20% -10%, #1a1d24 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  a{ color:inherit; }
+
+  header{
+    padding:24px 32px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+  .live-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 0 0 rgba(52,214,196,0.6);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(52,214,196,0.55);}
+    70%{box-shadow:0 0 0 9px rgba(52,214,196,0);}
+    100%{box-shadow:0 0 0 0 rgba(52,214,196,0);}
+  }
+  @media (prefers-reduced-motion: reduce){ .live-dot{ animation:none; } }
+  header h1{
+    font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:600; margin:0;
+    letter-spacing:0.02em; color:var(--text);
+  }
+  .nav-links{ display:flex; gap:22px; font-size:13px; font-weight:600; }
+  .nav-links a{ text-decoration:none; color:var(--muted); transition:color .15s; }
+  .nav-links a:hover{ color:var(--teal); }
+
+  main{
+    max-width:480px; margin:0 auto; padding:100px 32px 120px;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600;
+    color:var(--muted); text-decoration:none; margin-bottom:40px; align-self:flex-start;
+    transition:color .15s;
+  }
+  .back-link:hover{ color:var(--teal); }
+
+  .lock-icon{ font-size:32px; margin-bottom:18px; opacity:.8; }
+  h2{
+    font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; margin:0 0 10px;
+  }
+  main > p{ color:var(--muted); font-size:14px; line-height:1.6; margin:0 0 32px; max-width:360px; }
+
+  .code-form{ width:100%; display:flex; flex-direction:column; gap:16px; }
+  .code-input-wrap{
+    border-radius:12px;
+    transition: box-shadow .2s ease, border-color .2s ease;
+  }
+  #codeInput{
+    width:100%; background:var(--panel); border:1.5px solid var(--line);
+    border-radius:12px; padding:16px 18px; color:var(--text);
+    font-family:'Space Grotesk',monospace; font-size:16px; text-align:center;
+    letter-spacing:0.04em; outline:none;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  #codeInput::placeholder{ color:var(--dim); font-family:'Inter',sans-serif; letter-spacing:normal; }
+  #codeInput.glow-red{
+    border-color:var(--live);
+    box-shadow: 0 0 0 4px rgba(255,75,62,0.18), 0 0 20px rgba(255,75,62,0.35);
+  }
+  #codeInput.glow-green{
+    border-color:var(--teal);
+    box-shadow: 0 0 0 4px rgba(52,214,196,0.2), 0 0 24px rgba(52,214,196,0.45);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    #codeInput.glow-red{ animation: shake .35s ease; }
+  }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-6px); }
+    75%{ transform:translateX(6px); }
+  }
+
+  .submit-btn{
+    background:var(--teal); color:#04211D; border:none; border-radius:12px;
+    padding:14px; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700;
+    cursor:pointer; transition:background .15s;
+  }
+  .submit-btn:hover{ background:#4be2d1; }
+  .submit-btn:disabled{ opacity:.7; cursor:default; }
+
+  .status-msg{
+    font-size:13px; min-height:18px; margin-top:-4px;
+  }
+  .status-msg.err{ color:var(--live); }
+  .status-msg.ok{ color:var(--teal); }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="../index.html">
+    <span class="live-dot"></span>
+    <h1>BITESTERXBEAST</h1>
+  </a>
+  <div class="nav-links">
+    <a href="../channeldeck/home/">Channel Deck</a>
+    <a href="../changelog/">Changelog</a>
+    <a href="https://discord.gg/nvAvpsucpa" target="_blank" rel="noopener noreferrer">Discord</a>
+  </div>
+</header>
+
+<main>
+  <a class="back-link" href="../index.html">← Back to home</a>
+  <div class="lock-icon">🔒</div>
+  <h2>Got a code?</h2>
+  <p>This one's not linked from anywhere on the site. If you know the word, type it below.</p>
+
+  <form class="code-form" id="codeForm" autocomplete="off">
+    <div class="code-input-wrap">
+      <input type="text" id="codeInput" placeholder="Enter code" autocomplete="off" spellcheck="false">
+    </div>
+    <button type="submit" class="submit-btn" id="submitBtn">Unlock</button>
+    <div class="status-msg" id="statusMsg"></div>
+  </form>
+</main>
+
+<script>
+(function(){
+  const CORRECT_CODE = 'Games';
+  const REDIRECT_URL = 'https://sites.google.com/view/bites-fun-websites-url-custom/home';
+
+  const form = document.getElementById('codeForm');
+  const input = document.getElementById('codeInput');
+  const statusMsg = document.getElementById('statusMsg');
+  const submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const value = input.value.trim();
+
+    input.classList.remove('glow-red', 'glow-green');
+    // force reflow so the shake animation can re-trigger on repeated wrong guesses
+    void input.offsetWidth;
+
+    if (value === CORRECT_CODE){
+      input.classList.add('glow-green');
+      statusMsg.textContent = 'Correct — taking you there…';
+      statusMsg.className = 'status-msg ok';
+      submitBtn.disabled = true;
+      input.disabled = true;
+      setTimeout(() => {
+        window.location.href = REDIRECT_URL;
+      }, 1000);
+    } else {
+      input.classList.add('glow-red');
+      statusMsg.textContent = 'Not quite.';
+      statusMsg.className = 'status-msg err';
+      setTimeout(() => {
+        input.classList.remove('glow-red');
+      }, 1200);
+    }
+  });
+})();
+</script>
+</body>
+</html>
