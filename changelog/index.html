@@ -185,6 +185,23 @@
   </div>
 
   <div class="changelog-section">
+    <h3>Shorts Charts</h3>
+    <div class="changelog-entry latest">
+      <div class="changelog-entry-head">
+        <span class="v">V0.100</span>
+        <span class="d">September 3, 2026</span>
+      </div>
+      <ul>
+        <li>Launched Shorts Charts — tracks the top songs trending on YouTube Shorts, built from YouTube's own weekly chart export (no scraping, no API, just a CSV dropped in each week).</li>
+        <li>Four range views: <b>7 Days</b> shows the latest weekly chart as-is, with real up/down movement. <b>28 / 90 / 365 Days</b> aggregate every weekly snapshot in that window using points-based scoring (#1 = 50 points, #50 = 1 point, summed and re-ranked) — the same approach real music charts use for multi-week rankings.</li>
+        <li>Click any song to open a detail panel: best rank ever, weeks tracked, points in the selected range, full rank history across every snapshot collected so far, and a link to watch on YouTube.</li>
+        <li>New weeks are added by dropping a CSV into <code>csv-reading/</code> and listing it in <code>manifest.json</code> — the page fetches and re-ranks automatically, no rebuild needed.</li>
+        <li>28/90/365-day views will fill in and get more meaningful as more weekly snapshots are collected — for now they reflect however many weeks have been tracked so far.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="changelog-section">
     <h3>Channel Deck</h3>
 
     <div class="changelog-entry latest">

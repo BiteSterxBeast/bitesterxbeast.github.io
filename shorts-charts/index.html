@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shorts Charts — BiteSterxBeast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="../favicon.png">
+<meta name="theme-color" content="#34D6C4">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Shorts Charts — BiteSterxBeast">
+<meta property="og:description" content="The top songs trending on YouTube Shorts, tracked weekly — see what's climbing over the last 7, 28, 90, or 365 days.">
+<meta property="og:url" content="https://bitesterxbeast.github.io/shorts-charts/">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0B0D10;
+    --panel:#14171C;
+    --panel-2:#1B1F26;
+    --line:#262B33;
+    --text:#E8EAED;
+    --muted:#8A93A1;
+    --dim:#5A626F;
+    --teal:#34D6C4;
+    --amber:#F2B84B;
+    --live:#FF4B3E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at 20% -10%, #1a1d24 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    transition: margin-right 0.25s ease;
+  }
+  body.panel-open{ margin-right: 340px; }
+  a{ color:inherit; }
+  .num{font-family:'Space Grotesk',monospace;font-variant-numeric:tabular-nums;}
+
+  header{
+    padding:24px 32px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+  .live-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 0 0 rgba(52,214,196,0.6);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(52,214,196,0.55);}
+    70%{box-shadow:0 0 0 9px rgba(52,214,196,0);}
+    100%{box-shadow:0 0 0 0 rgba(52,214,196,0);}
+  }
+  @media (prefers-reduced-motion: reduce){ .live-dot{ animation:none; } }
+  header h1{
+    font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:600; margin:0;
+    letter-spacing:0.02em; color:var(--text);
+  }
+  .nav-links{ display:flex; gap:22px; font-size:13px; font-weight:600; }
+  .nav-links a{ text-decoration:none; color:var(--muted); transition:color .15s; }
+  .nav-links a:hover{ color:var(--teal); }
+
+  main{ max-width:900px; margin:0 auto; padding:56px 32px 100px; }
+
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600;
+    color:var(--muted); text-decoration:none; margin-bottom:24px; transition:color .15s;
+  }
+  .back-link:hover{ color:var(--teal); }
+
+  .page-head{ margin-bottom:32px; }
+  .eyebrow{
+    display:inline-block; font-size:11px; font-weight:600; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--teal); background:rgba(52,214,196,0.08);
+    border:1px solid rgba(52,214,196,0.25); padding:6px 12px; border-radius:20px;
+    margin-bottom:16px;
+  }
+  .page-head h2{
+    font-family:'Space Grotesk',sans-serif; font-size:30px; font-weight:700; margin:0 0 10px;
+  }
+  .page-head p{ color:var(--muted); font-size:14.5px; line-height:1.6; margin:0; max-width:640px; }
+
+  /* Range tabs */
+  .range-tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .range-tabs button{
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--text);
+    border-radius:20px; padding:7px 16px; cursor:pointer;
+    transition:border-color .15s, background .15s, color .15s;
+  }
+  .range-tabs button:hover{ border-color:var(--teal); }
+  .range-tabs button.active{ background:var(--teal); color:#04211D; border-color:var(--teal); }
+
+  .range-status{
+    font-size:12.5px; color:var(--dim); margin-bottom:24px; line-height:1.6;
+  }
+  .range-status b{ color:var(--muted); font-weight:600; }
+
+  /* Table */
+  .chart-list{ display:flex; flex-direction:column; border-top:1px solid var(--line); }
+  .chart-row{
+    display:grid;
+    grid-template-columns: 44px 1fr 90px 70px;
+    align-items:center;
+    gap:14px;
+    padding:14px 10px;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    transition:background .12s;
+  }
+  .chart-row:hover{ background:var(--panel); }
+  .chart-rank{
+    font-family:'Space Grotesk',monospace; font-size:18px; font-weight:700; color:var(--muted);
+    text-align:center;
+  }
+  .chart-row:nth-child(-n+3) .chart-rank{ color:var(--amber); }
+  .chart-info{ min-width:0; }
+  .chart-title{
+    font-size:14.5px; font-weight:600; color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .chart-artist{
+    font-size:12.5px; color:var(--muted);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    margin-top:2px;
+  }
+  .chart-stat{
+    font-family:'Space Grotesk',monospace; font-size:13px; color:var(--muted);
+    text-align:center;
+  }
+  .chart-move{ text-align:center; font-size:13px; font-weight:600; }
+  .move-up{ color:var(--teal); }
+  .move-down{ color:var(--live); }
+  .move-flat{ color:var(--dim); }
+  .move-new{
+    font-size:10.5px; font-weight:700; letter-spacing:.03em; color:var(--amber);
+    border:1px solid rgba(242,184,75,0.3); background:rgba(242,184,75,0.08);
+    border-radius:10px; padding:2px 7px;
+  }
+
+  .col-head{
+    display:grid;
+    grid-template-columns: 44px 1fr 90px 70px;
+    gap:14px; padding:0 10px 8px;
+    font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--dim);
+  }
+  .col-head span:first-child{ text-align:center; }
+  .col-head span:nth-child(3){ text-align:center; }
+  .col-head span:last-child{ text-align:center; }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--muted); font-size:14px;
+  }
+
+  @media (max-width: 620px){
+    .chart-row, .col-head{ grid-template-columns: 32px 1fr 60px; }
+    .chart-stat.hide-mobile{ display:none; }
+  }
+
+  /* Detail side panel */
+  .side-panel{
+    position:fixed; top:0; right:-340px; width:340px; height:100vh;
+    background:var(--panel); border-left:1px solid var(--line);
+    transition:right .25s ease; z-index:50;
+    display:flex; flex-direction:column;
+    overflow-y:auto;
+  }
+  .side-panel.open{ right:0; }
+  .side-panel-header{
+    padding:20px 22px; border-bottom:1px solid var(--line);
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  }
+  .side-panel-close{
+    background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer;
+    line-height:1; padding:2px;
+  }
+  .side-panel-close:hover{ color:var(--text); }
+  .sp-title{ font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:700; margin:0 0 4px; }
+  .sp-artist{ font-size:13px; color:var(--muted); }
+  .side-panel-content{ padding:22px; display:flex; flex-direction:column; gap:20px; }
+  .sp-rank-hero{
+    display:flex; align-items:baseline; gap:12px;
+  }
+  .sp-rank-num{ font-family:'Space Grotesk',monospace; font-size:44px; font-weight:700; color:var(--teal); }
+  .sp-rank-label{ font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.06em; }
+  .sp-stats{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .sp-stat{ background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .sp-stat .v{ font-family:'Space Grotesk',monospace; font-size:18px; font-weight:700; }
+  .sp-stat .l{ font-size:11px; color:var(--dim); margin-top:2px; }
+  .sp-history{ }
+  .sp-history h4{
+    font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.06em;
+    margin:0 0 10px;
+  }
+  .sp-history-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:7px 0; border-bottom:1px solid var(--line); font-size:13px;
+  }
+  .sp-history-row:last-child{ border-bottom:none; }
+  .sp-history-row .d{ color:var(--muted); }
+  .sp-history-row .r{ font-family:'Space Grotesk',monospace; font-weight:700; }
+  .sp-watch{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--teal); color:#04211D; text-decoration:none;
+    font-weight:600; font-size:13.5px; padding:11px; border-radius:10px;
+    transition:background .15s;
+  }
+  .sp-watch:hover{ background:#4be2d1; }
+  .side-panel-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:40;
+    opacity:0; pointer-events:none; transition:opacity .25s ease;
+  }
+  .side-panel-overlay.open{ opacity:1; pointer-events:auto; }
+
+  .load-msg{ text-align:center; padding:60px 20px; color:var(--dim); font-size:13.5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="../index.html">
+    <span class="live-dot"></span>
+    <h1>BITESTERXBEAST</h1>
+  </a>
+  <div class="nav-links">
+    <a href="../channeldeck/home/">Channel Deck</a>
+    <a href="../changelog/">Changelog</a>
+    <a href="https://discord.gg/nvAvpsucpa" target="_blank" rel="noopener noreferrer">Discord</a>
+  </div>
+</header>
+
+<main>
+  <a class="back-link" href="../index.html">← Back to home</a>
+  <div class="page-head">
+    <span class="eyebrow">Weekly Chart Data · US</span>
+    <h2>Shorts Charts</h2>
+    <p>The top songs trending on YouTube Shorts, built straight from YouTube's own weekly chart export. Switch ranges to see what's held on the longest, not just this week's snapshot. Click any song for its full rank history.</p>
+  </div>
+
+  <div class="range-tabs" id="rangeTabs">
+    <button data-days="7" class="active">7 Days</button>
+    <button data-days="28">28 Days</button>
+    <button data-days="90">90 Days</button>
+    <button data-days="365">365 Days</button>
+  </div>
+
+  <div class="range-status" id="rangeStatus"></div>
+
+  <div id="chartArea">
+    <div class="load-msg">Loading chart data…</div>
+  </div>
+</main>
+
+<div class="side-panel-overlay" id="overlay"></div>
+<div class="side-panel" id="sidePanel">
+  <div class="side-panel-header">
+    <div>
+      <div class="sp-title" id="spTitle">—</div>
+      <div class="sp-artist" id="spArtist">—</div>
+    </div>
+    <button class="side-panel-close" id="spClose">✕</button>
+  </div>
+  <div class="side-panel-content" id="spContent"></div>
+</div>
+
+<script>
+(function(){
+
+  const CSV_DIR = 'csv-reading/';
+  const MANIFEST_URL = CSV_DIR + 'manifest.json';
+  const POINTS_BASE = 51; // points = 51 - rank, so #1 = 50pts, #50 = 1pt
+
+  const chartArea = document.getElementById('chartArea');
+  const rangeStatus = document.getElementById('rangeStatus');
+  const rangeTabs = document.getElementById('rangeTabs');
+  const sidePanel = document.getElementById('sidePanel');
+  const overlay = document.getElementById('overlay');
+
+  let weeks = [];       // [{date, filename, songs:[{rank, prevRank, track, artist, periods, url}]}]
+  let currentDays = 7;
+
+  // ---------- CSV parsing (handles quoted fields with embedded commas) ----------
+  function parseCSV(text){
+    const rows = [];
+    let i = 0, field = '', row = [], inQuotes = false;
+    while (i < text.length){
+      const c = text[i];
+      if (inQuotes){
+        if (c === '"'){
+          if (text[i+1] === '"'){ field += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        }
+        field += c; i++; continue;
+      } else {
+        if (c === '"'){ inQuotes = true; i++; continue; }
+        if (c === ','){ row.push(field); field = ''; i++; continue; }
+        if (c === '\r'){ i++; continue; }
+        if (c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+        field += c; i++; continue;
+      }
+    }
+    if (field.length || row.length){ row.push(field); rows.push(row); }
+    return rows.filter(r => r.length > 1 || (r.length === 1 && r[0] !== ''));
+  }
+
+  function extractDate(filename){
+    const m = filename.match(/(\d{4})(\d{2})(\d{2})/);
+    if (!m) return null;
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  }
+
+  function fmtDate(d){
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', timeZone:'UTC' });
+  }
+
+  // ---------- Load all weekly CSVs listed in manifest.json ----------
+  async function loadAllWeeks(){
+    const manifestRes = await fetch(MANIFEST_URL);
+    if (!manifestRes.ok) throw new Error('manifest fetch failed');
+    const files = await manifestRes.json();
+
+    const loaded = [];
+    for (const fname of files){
+      try {
+        const res = await fetch(CSV_DIR + fname);
+        if (!res.ok) continue;
+        const text = await res.text();
+        const rows = parseCSV(text);
+        if (!rows.length) continue;
+        const header = rows[0].map(h => h.trim());
+        const idx = {
+          rank: header.indexOf('Rank'),
+          prev: header.indexOf('Previous Rank'),
+          track: header.indexOf('Track Name'),
+          artist: header.indexOf('Artist Names'),
+          periods: header.indexOf('Periods on Chart'),
+          url: header.indexOf('YouTube URL')
+        };
+        const songs = rows.slice(1).map(r => ({
+          rank: parseInt(r[idx.rank], 10),
+          prevRank: (idx.prev >= 0 && r[idx.prev] && r[idx.prev].toLowerCase() !== 'n/a') ? parseInt(r[idx.prev], 10) : null,
+          track: (r[idx.track] || '').trim(),
+          artist: (r[idx.artist] || '').trim(),
+          periods: idx.periods >= 0 ? parseInt(r[idx.periods], 10) : null,
+          url: (r[idx.url] || '').trim()
+        })).filter(s => s.track && !isNaN(s.rank));
+
+        const date = extractDate(fname);
+        if (!date){
+          console.warn('Shorts Charts: skipping "' + fname + '" — no YYYYMMDD date found in filename.');
+          continue;
+        }
+        loaded.push({ date, filename: fname, songs });
+      } catch(e){ /* skip a bad file rather than breaking the whole chart */ }
+    }
+    loaded.sort((a,b) => a.date - b.date);
+    return loaded;
+  }
+
+  function songKey(s){
+    return (s.url || (s.track + '|' + s.artist)).toLowerCase();
+  }
+
+  // ---------- Range selection + aggregation ----------
+  function getRangeWeeks(days){
+    if (!weeks.length) return [];
+    const latest = weeks[weeks.length - 1].date;
+    const cutoff = new Date(latest.getTime() - days * 24 * 3600 * 1000);
+    return weeks.filter(w => w.date.getTime() >= cutoff.getTime());
+  }
+
+  function buildAggregate(rangeWeeks){
+    const map = new Map();
+    for (const w of rangeWeeks){
+      for (const s of w.songs){
+        const key = songKey(s);
+        if (!map.has(key)){
+          map.set(key, { track: s.track, artist: s.artist, url: s.url, points: 0, weeksInRange: 0, bestRank: Infinity });
+        }
+        const e = map.get(key);
+        e.points += (POINTS_BASE - s.rank);
+        e.weeksInRange += 1;
+        e.bestRank = Math.min(e.bestRank, s.rank);
+      }
+    }
+    const arr = Array.from(map.values());
+    arr.sort((a,b) => b.points - a.points);
+    arr.forEach((e,i) => { e.rank = i + 1; });
+    return arr.slice(0, 50);
+  }
+
+  function getFullHistory(key){
+    const hist = [];
+    for (const w of weeks){
+      const found = w.songs.find(s => songKey(s) === key);
+      if (found) hist.push({ date: w.date, rank: found.rank });
+    }
+    hist.sort((a,b) => b.date - a.date);
+    return hist;
+  }
+
+  // ---------- Rendering ----------
+  function renderStatus(days, rangeWeeks){
+    const latest = weeks[weeks.length - 1];
+    const expected = Math.max(1, Math.round(days / 7));
+    let msg = `<b>${rangeWeeks.length}</b> weekly snapshot${rangeWeeks.length === 1 ? '' : 's'} collected so far for this range`;
+    if (days > 7 && rangeWeeks.length < expected){
+      msg += ` (out of roughly ${expected} once a full ${days}-day window has been tracked)`;
+    }
+    msg += ` · latest data from <b>${fmtDate(latest.date)}</b>.`;
+    rangeStatus.innerHTML = msg;
+  }
+
+  function renderWeeklyTable(week){
+    const sorted = week.songs.slice().sort((a,b) => a.rank - b.rank);
+    let html = `<div class="col-head"><span>#</span><span>Song</span><span class="hide-mobile">Weeks Charted</span><span>Move</span></div>`;
+    html += `<div class="chart-list">`;
+    sorted.forEach(s => {
+      let move;
+      if (s.prevRank === null){
+        move = `<span class="move-new">NEW</span>`;
+      } else if (s.prevRank === s.rank){
+        move = `<span class="move-flat">—</span>`;
+      } else if (s.prevRank > s.rank){
+        move = `<span class="move-up">▲ ${s.prevRank - s.rank}</span>`;
+      } else {
+        move = `<span class="move-down">▼ ${s.rank - s.prevRank}</span>`;
+      }
+      html += `
+        <div class="chart-row" data-key="${escapeAttr(songKey(s))}">
+          <div class="chart-rank num">${s.rank}</div>
+          <div class="chart-info">
+            <div class="chart-title">${escapeHtml(s.track)}</div>
+            <div class="chart-artist">${escapeHtml(s.artist)}</div>
+          </div>
+          <div class="chart-stat hide-mobile">${s.periods != null && !isNaN(s.periods) ? s.periods : '—'}</div>
+          <div class="chart-move">${move}</div>
+        </div>`;
+    });
+    html += `</div>`;
+    chartArea.innerHTML = html;
+  }
+
+  function renderAggregateTable(agg){
+    let html = `<div class="col-head"><span>#</span><span>Song</span><span class="hide-mobile">Best Rank</span><span>Points</span></div>`;
+    html += `<div class="chart-list">`;
+    agg.forEach(e => {
+      html += `
+        <div class="chart-row" data-key="${escapeAttr(e.url ? e.url.toLowerCase() : (e.track+'|'+e.artist).toLowerCase())}">
+          <div class="chart-rank num">${e.rank}</div>
+          <div class="chart-info">
+            <div class="chart-title">${escapeHtml(e.track)}</div>
+            <div class="chart-artist">${escapeHtml(e.artist)}</div>
+          </div>
+          <div class="chart-stat hide-mobile">#${e.bestRank}</div>
+          <div class="chart-move num">${e.points}</div>
+        </div>`;
+    });
+    html += `</div>`;
+    if (!agg.length){
+      html = `<div class="empty-state">No chart data yet for this range.</div>`;
+    }
+    chartArea.innerHTML = html;
+  }
+
+  function render(days){
+    currentDays = days;
+    if (!weeks.length){
+      chartArea.innerHTML = `<div class="empty-state">No chart data found. Make sure a CSV is listed in <code>csv-reading/manifest.json</code>.</div>`;
+      rangeStatus.textContent = '';
+      return;
+    }
+    const rangeWeeks = getRangeWeeks(days);
+    renderStatus(days, rangeWeeks);
+    if (days === 7){
+      renderWeeklyTable(weeks[weeks.length - 1]);
+    } else {
+      renderAggregateTable(buildAggregate(rangeWeeks));
+    }
+  }
+
+  // ---------- Detail side panel ----------
+  function openDetail(key){
+    const history = getFullHistory(key);
+    if (!history.length) return;
+    // find latest song object with full fields (track/artist/url) from the most recent week it appeared in
+    let songInfo = null;
+    for (let i = weeks.length - 1; i >= 0; i--){
+      const found = weeks[i].songs.find(s => songKey(s) === key);
+      if (found){ songInfo = found; break; }
+    }
+    if (!songInfo) return;
+
+    document.getElementById('spTitle').textContent = songInfo.track;
+    document.getElementById('spArtist').textContent = songInfo.artist;
+
+    const latestEntry = history[0];
+    const rangeWeeks = getRangeWeeks(currentDays);
+    const inRangeHistory = history.filter(h => rangeWeeks.some(w => w.date.getTime() === h.date.getTime()));
+    const points = inRangeHistory.reduce((sum,h) => sum + (POINTS_BASE - h.rank), 0);
+    const bestRank = Math.min(...history.map(h => h.rank));
+
+    let statsHtml = `
+      <div class="sp-rank-hero">
+        <div class="sp-rank-num num">#${latestEntry.rank}</div>
+        <div class="sp-rank-label">Latest rank<br>${fmtDate(latestEntry.date)}</div>
+      </div>
+      <div class="sp-stats">
+        <div class="sp-stat"><div class="v num">#${bestRank}</div><div class="l">Best rank ever</div></div>
+        <div class="sp-stat"><div class="v num">${history.length}</div><div class="l">Weeks tracked</div></div>
+        <div class="sp-stat"><div class="v num">${points}</div><div class="l">Points (selected range)</div></div>
+        <div class="sp-stat"><div class="v num">${songInfo.periods != null && !isNaN(songInfo.periods) ? songInfo.periods : '—'}</div><div class="l">Total periods on chart</div></div>
+      </div>
+      <div class="sp-history">
+        <h4>Rank history</h4>
+        ${history.map(h => `<div class="sp-history-row"><span class="d">${fmtDate(h.date)}</span><span class="r num">#${h.rank}</span></div>`).join('')}
+      </div>
+    `;
+    if (songInfo.url){
+      statsHtml += `<a class="sp-watch" href="${escapeAttr(songInfo.url)}" target="_blank" rel="noopener noreferrer">▶ Watch on YouTube</a>`;
+    }
+    document.getElementById('spContent').innerHTML = statsHtml;
+
+    document.body.classList.add('panel-open');
+    sidePanel.classList.add('open');
+    overlay.classList.add('open');
+  }
+
+  function closeDetail(){
+    document.body.classList.remove('panel-open');
+    sidePanel.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+
+  document.getElementById('spClose').addEventListener('click', closeDetail);
+  overlay.addEventListener('click', closeDetail);
+
+  chartArea.addEventListener('click', (e) => {
+    const row = e.target.closest('.chart-row');
+    if (!row) return;
+    openDetail(row.getAttribute('data-key'));
+  });
+
+  rangeTabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    rangeTabs.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render(parseInt(btn.getAttribute('data-days'), 10));
+  });
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function escapeAttr(str){ return escapeHtml(str); }
+
+  // ---------- Init ----------
+  loadAllWeeks().then(w => {
+    weeks = w;
+    render(currentDays);
+  }).catch(err => {
+    chartArea.innerHTML = `<div class="empty-state">Couldn't load chart data (${escapeHtml(err.message)}). Check that csv-reading/manifest.json exists and lists a valid CSV file.</div>`;
+  });
+
+})();
+</script>
+</body>
+</html>
