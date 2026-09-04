@@ -82,6 +82,22 @@
     border:1px solid rgba(52,214,196,0.25); padding:6px 12px; border-radius:20px;
     margin-bottom:16px;
   }
+  .region-select-wrap{ position:relative; display:inline-block; margin-bottom:16px; }
+  .region-select{
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    font-family:'Inter',sans-serif; font-size:11px; font-weight:600; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--teal); background:rgba(52,214,196,0.08);
+    border:1px solid rgba(52,214,196,0.25); border-radius:20px;
+    padding:6px 30px 6px 12px; cursor:pointer; margin:0;
+    transition:border-color .15s;
+  }
+  .region-select:hover{ border-color:var(--teal); }
+  .region-select:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
+  .region-select option{ background:var(--panel-2); color:var(--text); text-transform:none; letter-spacing:normal; }
+  .region-select-wrap::after{
+    content:'▾'; position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    color:var(--teal); font-size:10px; pointer-events:none;
+  }
   .page-head h2{
     font-family:'Space Grotesk',sans-serif; font-size:30px; font-weight:700; margin:0 0 10px;
   }
@@ -258,7 +274,9 @@
 <main>
   <a class="back-link" href="../index.html">← Back to home</a>
   <div class="page-head">
-    <span class="eyebrow">Weekly Chart Data · US</span>
+    <div class="region-select-wrap">
+      <select class="region-select" id="regionSelect"></select>
+    </div>
     <h2>Shorts Charts</h2>
     <p>The top songs trending on YouTube Shorts, built straight from YouTube's own weekly chart export. Switch ranges to see what's held on the longest, not just this week's snapshot. Click any song for its full rank history.</p>
   </div>
@@ -297,8 +315,8 @@
 <script>
 (function(){
 
-  const CSV_DIR = 'csv-reading/';
-  const MANIFEST_URL = CSV_DIR + 'manifest.json';
+  const CSV_ROOT = 'csv-reading/';
+  const REGIONS_URL = CSV_ROOT + 'regions.json';
   const POINTS_BASE = 51; // points = 51 - rank, so #1 = 50pts, #50 = 1pt
 
   const chartArea = document.getElementById('chartArea');
@@ -306,9 +324,15 @@
   const rangeTabs = document.getElementById('rangeTabs');
   const sidePanel = document.getElementById('sidePanel');
   const overlay = document.getElementById('overlay');
+  const regionSelect = document.getElementById('regionSelect');
 
   let weeks = [];       // [{date, filename, songs:[{rank, prevRank, track, artist, periods, url}]}]
   let currentDays = 7;
+  let currentRegion = 'us';
+  let regions = [];     // [{id, label}]
+
+  function csvDirFor(region){ return CSV_ROOT + region + '/'; }
+  function manifestUrlFor(region){ return csvDirFor(region) + 'manifest.json'; }
 
   // ---------- CSV parsing (handles quoted fields with embedded commas) ----------
   function parseCSV(text){
@@ -344,20 +368,21 @@
     return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', timeZone:'UTC' });
   }
 
-  // ---------- Load all weekly CSVs listed in manifest.json ----------
+  // ---------- Load all weekly CSVs listed in manifest.json for a given region ----------
   // cacheBust: a fresh value forces both the browser and GitHub Pages' CDN to
   // treat this as a new URL, bypassing any stale cached copy of manifest.json
   // or an individual week's CSV.
-  async function loadAllWeeks(cacheBust){
+  async function loadAllWeeks(region, cacheBust){
     const bust = cacheBust ? ('?v=' + cacheBust) : '';
-    const manifestRes = await fetch(MANIFEST_URL + bust, { cache: 'no-store' });
+    const csvDir = csvDirFor(region);
+    const manifestRes = await fetch(manifestUrlFor(region) + bust, { cache: 'no-store' });
     if (!manifestRes.ok) throw new Error('manifest fetch failed');
     const files = await manifestRes.json();
 
     const loaded = [];
     for (const fname of files){
       try {
-        const res = await fetch(CSV_DIR + fname + bust, { cache: 'no-store' });
+        const res = await fetch(csvDir + fname + bust, { cache: 'no-store' });
         if (!res.ok) continue;
         const text = await res.text();
         const rows = parseCSV(text);
@@ -501,7 +526,8 @@
   function render(days){
     currentDays = days;
     if (!weeks.length){
-      chartArea.innerHTML = `<div class="empty-state">No chart data found. Make sure a CSV is listed in <code>csv-reading/manifest.json</code>.</div>`;
+      const label = (regions.find(r => r.id === currentRegion) || {}).label || currentRegion;
+      chartArea.innerHTML = `<div class="empty-state">No chart data yet for <b>${escapeHtml(label)}</b>. Once a CSV is dropped into <code>csv-reading/${escapeHtml(currentRegion)}/</code> and listed in its <code>manifest.json</code>, it'll show up here.</div>`;
       rangeStatus.textContent = '';
       return;
     }
@@ -591,7 +617,7 @@
     const originalLabel = refreshBtn.innerHTML;
     refreshBtn.innerHTML = '<span class="refresh-icon">↻</span> Refreshing…';
     try {
-      weeks = await loadAllWeeks(Date.now());
+      weeks = await loadAllWeeks(currentRegion, Date.now());
       render(currentDays);
       refreshBtn.innerHTML = '<span class="refresh-icon">↻</span> Refreshed ✓';
     } catch(err){
@@ -605,18 +631,47 @@
     }, 1800);
   });
 
+  regionSelect.addEventListener('change', async () => {
+    currentRegion = regionSelect.value;
+    chartArea.innerHTML = `<div class="load-msg">Loading ${escapeHtml((regions.find(r=>r.id===currentRegion)||{}).label || currentRegion)} chart data…</div>`;
+    rangeStatus.textContent = '';
+    try {
+      weeks = await loadAllWeeks(currentRegion, Date.now());
+      render(currentDays);
+    } catch(err){
+      weeks = [];
+      chartArea.innerHTML = `<div class="empty-state">Couldn't load chart data for this region (${escapeHtml(err.message)}).</div>`;
+    }
+  });
+
   function escapeHtml(str){
     return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
   function escapeAttr(str){ return escapeHtml(str); }
 
   // ---------- Init ----------
-  loadAllWeeks(Date.now()).then(w => {
-    weeks = w;
-    render(currentDays);
-  }).catch(err => {
-    chartArea.innerHTML = `<div class="empty-state">Couldn't load chart data (${escapeHtml(err.message)}). Check that csv-reading/manifest.json exists and lists a valid CSV file.</div>`;
-  });
+  async function init(){
+    try {
+      const regionsRes = await fetch(REGIONS_URL + '?v=' + Date.now(), { cache: 'no-store' });
+      if (!regionsRes.ok) throw new Error('regions fetch failed');
+      regions = await regionsRes.json();
+    } catch(err){
+      regions = [{ id: 'us', label: 'United States' }]; // safe fallback if regions.json is missing
+    }
+    regionSelect.innerHTML = regions.map(r =>
+      `<option value="${escapeAttr(r.id)}">Weekly Chart Data · ${escapeHtml(r.label)}</option>`
+    ).join('');
+    currentRegion = regions.length ? regions[0].id : 'us';
+    regionSelect.value = currentRegion;
+
+    try {
+      weeks = await loadAllWeeks(currentRegion, Date.now());
+      render(currentDays);
+    } catch(err){
+      chartArea.innerHTML = `<div class="empty-state">Couldn't load chart data (${escapeHtml(err.message)}). Check that csv-reading/${escapeHtml(currentRegion)}/manifest.json exists and lists a valid CSV file.</div>`;
+    }
+  }
+  init();
 
 })();
 </script>
