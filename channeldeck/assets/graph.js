@@ -91,6 +91,28 @@ document.getElementById('resetZoomBtn').onclick = () => {
   if (subChart) subChart.resetZoom();
 };
 
+// Snapshots only exist for hours the page was actually open. A run of nulls
+// means "nobody was watching", not "the count dropped to nothing" — so for
+// cumulative metrics the last known reading is carried forward across the gap.
+// That draws a flat line through downtime and a step at the next real reading,
+// instead of chopping the series into disconnected islands. Nulls before a
+// channel's first ever reading stay null so it isn't stretched backwards.
+function carryForwardGaps(arr){
+  const values = arr.slice();
+  const filled = new Array(values.length).fill(false);
+  let last = null;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v === null || v === undefined) {
+      values[i] = last;            // stays null until the first real reading
+      filled[i] = last !== null;
+    } else {
+      last = v;
+    }
+  }
+  return { values, filled };
+}
+
 function updateChart() {
   // Slice the stored history down to the selected range. Everything outside it
   // stays in localStorage — this only changes what's drawn.
@@ -117,21 +139,34 @@ function updateChart() {
 
         const sliced = visible.map(i => (targetData && targetData[i] !== undefined) ? targetData[i] : null);
 
+        // Subs and total views only ever move forward, so a gap can be held
+        // flat at the last known value. VPH is a rate, not a running total —
+        // holding a stale rate across downtime would invent views that were
+        // never measured, so it just gets a straight connecting line instead.
+        const isCumulative = currentGraphMetric === 'subs'
+          || (currentGraphMetric === 'views' && currentViewsSubMetric === 'total');
+        const { values: drawn, filled } = isCumulative
+          ? carryForwardGaps(sliced)
+          : { values: sliced, filled: new Array(sliced.length).fill(false) };
+
+        // 28d/90d can hold hundreds of hourly points — drawing a marker on
+        // each one turns the line into a solid band, so markers only appear
+        // on hover at the wider ranges. Carried-forward hours never get a
+        // marker: there was no reading there to point at.
+        const baseRadius = currentRangeDays <= 7 ? 2 : 0;
+
         return {
            label: ds.label,
-           data: sliced,
+           data: drawn,
            borderColor: ds.color || '#34D6C4',
            backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`,
            fill: true,
            tension: 0,
            borderWidth: 2,
-           // 28d/90d can hold hundreds of hourly points — drawing a marker on
-           // each one turns the line into a solid band, so markers only appear
-           // on hover at the wider ranges.
-           pointRadius: currentRangeDays <= 7 ? 2 : 0,
+           pointRadius: filled.map(f => f ? 0 : baseRadius),
            pointHoverRadius: 5,
            pointHitRadius: 15,
-           spanGaps: false
+           spanGaps: !isCumulative
         };
     }).filter(Boolean);
 

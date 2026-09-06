@@ -298,10 +298,21 @@ function recordChartSnapshot() {
       ds.vphData.push(null);
     }
 
-    const lastReal = ds.subsData.length ? {
-      subs:  ds.subsData[ds.subsData.length - 1],
-      views: ds.viewsData[ds.viewsData.length - 1]
-    } : { subs: null, views: null };
+    // Scan back for the last reading that actually happened, rather than just
+    // taking the previous slot. If that slot missed — API error, quota burnt,
+    // channel stats not loaded yet — the old code copied its null forward, and
+    // every backfilled hour after it inherited the null. One bad hour could
+    // blank out days of the graph that way.
+    const lastReal = { subs: null, views: null };
+    for (let i = ds.subsData.length - 1; i >= 0; i--) {
+      if (lastReal.subs === null && ds.subsData[i] !== null && ds.subsData[i] !== undefined) {
+        lastReal.subs = ds.subsData[i];
+      }
+      if (lastReal.views === null && ds.viewsData[i] !== null && ds.viewsData[i] !== undefined) {
+        lastReal.views = ds.viewsData[i];
+      }
+      if (lastReal.subs !== null && lastReal.views !== null) break;
+    }
 
     if (!overwriting) {
       // Flatline the skipped hours at the last known reading.
@@ -334,8 +345,10 @@ function recordChartSnapshot() {
       }
     }
 
-    const subsVal  = subs  !== undefined ? subs  : null;
-    const viewsVal = views !== undefined ? views : null;
+    // A failed or not-yet-loaded read holds the last known value instead of
+    // writing a null, so a single missed hour doesn't punch a hole in the line.
+    const subsVal  = (subs  !== undefined && subs  !== null) ? subs  : lastReal.subs;
+    const viewsVal = (views !== undefined && views !== null) ? views : lastReal.views;
 
     if (overwriting && ds.subsData.length === chartSnapshots.timestamps.length) {
       const last = ds.subsData.length - 1;

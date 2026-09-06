@@ -173,7 +173,7 @@
     </div>
 
     <div class="modal-actions" style="justify-content: space-between; align-items: center;">
-      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.19</span>
+      <span style="font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--muted); font-weight: 600;">V0.191</span>
       <button class="primary" id="settingsClose">Close & Save</button>
     </div>
   </div>
@@ -183,9 +183,23 @@
 <div class="overlay" id="changelogOverlay" style="display:none;">
   <div class="modal" style="max-height: 85vh; overflow-y: auto;">
     <h3 style="margin-bottom: 20px;">Changelog</h3>
+
     <div style="margin-bottom: 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
-        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.19</h4>
+        <h4 style="margin:0; color:var(--teal); font-family:'Space Grotesk'; font-size: 15px;">V0.191</h4>
+        <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">September 6, 2026</span>
+      </div>
+      <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
+        <li>Graph View no longer breaks into disconnected islands across hours the page wasn't open. Subscriber and total-view lines now hold flat at the last known reading through downtime and step up when tracking resumes.</li>
+        <li>Hours filled in that way no longer get a point marker, so it stays clear which points are real readings and which are just the line holding steady.</li>
+        <li>VPH is a rate rather than a running total, so it gets a straight connecting line across a gap instead of a held value — a stale rate would have implied views that were never measured.</li>
+        <li>A single failed hour (API error, exhausted quota, stats not loaded yet) no longer records a null that every backfilled hour after it copies forward, which could blank out days of history from one bad reading.</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+        <h4 style="margin:0; color:var(--text); font-family:'Space Grotesk'; font-size: 15px;">V0.19</h4>
         <span style="font-size:11px; color:var(--muted); font-family:'Space Grotesk', monospace;">September 1, 2026</span>
       </div>
       <ul style="margin:0; padding-left:20px; color:var(--text); font-size:12.5px; line-height:1.7;">
