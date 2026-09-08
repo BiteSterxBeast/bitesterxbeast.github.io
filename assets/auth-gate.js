@@ -72,30 +72,62 @@
       var nav = document.querySelector(".nav-links");
       if (!nav || nav.querySelector(".bsb-user-chip")) return;
 
-      var chip = document.createElement("a");
-      chip.className = "bsb-user-chip";
-      chip.href = "#";
-      chip.title = "Signed in as " + user.username + " — click to sign out";
-      chip.style.cssText =
-        "display:inline-flex;align-items:center;gap:7px;color:var(--muted,#8A93A1);" +
-        "text-decoration:none;font-size:13px;font-weight:600;";
+      var wrap = document.createElement("div");
+      wrap.className = "bsb-user-chip";
+      wrap.style.cssText = "position:relative;display:inline-flex;";
+
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.style.cssText =
+        "display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;" +
+        "color:var(--muted,#8A93A1);font:inherit;font-size:13px;font-weight:600;padding:0;";
       if (user.avatar) {
         var img = document.createElement("img");
         img.src = user.avatar;
         img.width = 20; img.height = 20;
         img.style.cssText = "border-radius:50%;display:block;";
-        chip.appendChild(img);
+        btn.appendChild(img);
       }
-      chip.appendChild(document.createTextNode(user.username));
-      chip.addEventListener("click", function (e) {
-        e.preventDefault();
+      var nameSpan = document.createElement("span");
+      nameSpan.textContent = user.username;
+      btn.appendChild(nameSpan);
+      var caret = document.createElement("span");
+      caret.textContent = "\u25BE";
+      caret.style.cssText = "font-size:9px;opacity:.7;";
+      btn.appendChild(caret);
+
+      var menu = document.createElement("div");
+      menu.style.cssText =
+        "position:absolute;top:calc(100% + 10px);right:0;min-width:150px;" +
+        "background:var(--panel,#14171C);border:1px solid var(--line,#262B33);border-radius:10px;" +
+        "padding:6px;display:none;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.35);";
+
+      var signOut = document.createElement("button");
+      signOut.type = "button";
+      signOut.textContent = "Sign Out";
+      signOut.style.cssText =
+        "display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;" +
+        "color:var(--text,#E8EAED);font:inherit;font-size:13px;padding:8px 10px;border-radius:6px;";
+      signOut.addEventListener("mouseenter", function () { signOut.style.background = "var(--panel-2,#1B1F26)"; });
+      signOut.addEventListener("mouseleave", function () { signOut.style.background = "none"; });
+      signOut.addEventListener("click", function () {
         var tok = localStorage.getItem(KEY);
         fetch(CFG.api + "/logout", {
           method: "POST",
           headers: { Authorization: "Bearer " + tok }
         }).catch(function () {}).then(function () { toSignIn(); });
       });
-      nav.appendChild(chip);
+      menu.appendChild(signOut);
+
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        menu.style.display = menu.style.display === "block" ? "none" : "block";
+      });
+      document.addEventListener("click", function () { menu.style.display = "none"; });
+
+      wrap.appendChild(btn);
+      wrap.appendChild(menu);
+      nav.appendChild(wrap);
     });
   }
 
