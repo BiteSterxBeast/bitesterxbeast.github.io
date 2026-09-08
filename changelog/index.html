@@ -429,6 +429,21 @@
     <h3>VPH Guesser</h3>
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
+        <span class="v">V0.11</span>
+        <span class="d">September 7, 2026</span>
+      </div>
+      <ul>
+        <li>Added a Draw Graph button — trace the shape of the graph you actually saw in your analytics and the tool builds its estimates around your curve instead of an invented one.</li>
+        <li>Drawn curves are scaled to your exact view gain, so the shape is yours while the totals stay real.</li>
+        <li>Drawing produces five reads on your curve rather than five unrelated shapes: Traced, Tight Variant, Loose Variant, Smoothed, and Sharpened.</li>
+        <li>Sections of the drawing left blank are filled in by joining the nearest points you did draw, so a rough sketch is enough — no need to cover every hour.</li>
+        <li>An existing drawing is automatically resampled if you change the window length, instead of being thrown away.</li>
+        <li>Drawn results render in amber to distinguish them at a glance from the auto-generated guesses, with a one-click switch back to auto shapes.</li>
+        <li>Reroll now re-rolls the variation around your drawing rather than regenerating from scratch.</li>
+      </ul>
+    </div>
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
         <span class="v">V0.1 — Launch</span>
         <span class="d">September 7, 2026</span>
       </div>

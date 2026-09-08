@@ -173,6 +173,60 @@
   .btn-ghost:disabled{ opacity:0.4; cursor:default; border-color:var(--line); color:var(--muted); }
   .input-error{ font-size:12.5px; color:var(--live); display:none; }
 
+  /* ---------- drawing chip ---------- */
+  .draw-chip{
+    display:none; align-items:center; gap:10px;
+    background:rgba(242,184,75,0.07); border:1px solid rgba(242,184,75,0.28);
+    border-radius:9px; padding:9px 12px; font-size:12.5px; color:var(--muted);
+  }
+  .draw-chip.on{ display:flex; }
+  .draw-chip b{ color:var(--amber); font-weight:600; }
+  .draw-chip .mini{
+    height:26px; display:flex; align-items:flex-end; gap:1px; flex:1; min-width:80px;
+  }
+  .draw-chip .mini i{ flex:1 1 0; background:var(--amber); opacity:0.55; border-radius:1px; min-height:1px; }
+  .draw-chip button{
+    background:none; border:1px solid var(--line); color:var(--muted); border-radius:6px;
+    font-size:11.5px; font-weight:600; padding:5px 10px; cursor:pointer; font-family:'Inter',sans-serif;
+    transition:border-color .15s, color .15s; white-space:nowrap;
+  }
+  .draw-chip button:hover{ border-color:var(--amber); color:var(--amber); }
+
+  /* ---------- draw modal ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:90; display:none;
+    background:rgba(5,7,10,0.72); backdrop-filter:blur(3px);
+    align-items:center; justify-content:center; padding:24px;
+  }
+  .overlay.on{ display:flex; }
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:26px; width:100%; max-width:860px; max-height:90vh; overflow-y:auto;
+    box-shadow:0 24px 60px rgba(0,0,0,0.55);
+  }
+  .modal h3{
+    font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:600; margin:0 0 8px;
+  }
+  .modal p.modal-sub{ color:var(--muted); font-size:13px; line-height:1.6; margin:0 0 18px; }
+  .canvas-wrap{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:11px;
+    padding:12px; overflow-x:auto;
+  }
+  .canvas-wrap canvas{
+    display:block; cursor:crosshair; touch-action:none; border-radius:6px;
+  }
+  .canvas-legend{
+    display:flex; justify-content:space-between; font-size:10.5px; color:var(--dim);
+    font-family:'Space Grotesk',monospace; margin-top:8px;
+  }
+  .modal-actions{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    margin-top:20px; justify-content:flex-end;
+  }
+  .modal-actions .spacer{ flex:1; }
+  .modal-hint{ font-size:12px; color:var(--dim); }
+  .draw-error{ font-size:12.5px; color:var(--live); display:none; margin-top:10px; }
+
   /* ---------- summary ---------- */
   .summary-card{
     display:none;
@@ -227,6 +281,12 @@
   }
   .chart:hover .bar{ opacity:0.45; }
   .chart .bar:hover{ opacity:1; filter:brightness(1.25); }
+  .guess-card.drawn .bar{
+    background:linear-gradient(180deg, var(--amber) 0%, rgba(242,184,75,0.42) 100%);
+  }
+  .guess-card.drawn .guess-num{
+    background:rgba(242,184,75,0.1); border-color:rgba(242,184,75,0.32); color:var(--amber);
+  }
   .chart-axis{
     display:flex; justify-content:space-between;
     font-size:10.5px; color:var(--dim); font-family:'Space Grotesk',monospace;
@@ -268,9 +328,9 @@
 <main>
   <a class="back-link" href="../index.html">← Back to home</a>
   <div class="page-head">
-    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.1</span>
+    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.11</span>
     <h2>VPH Guesser</h2>
-    <p>You know the view count on two different days — but not what happened in between. Drop in both numbers and this builds five plausible hour-by-hour shapes the views-per-hour graph could have taken. Every guess adds up to your exact view gain.</p>
+    <p>You know the view count on two different days — but not what happened in between. Drop in both numbers and this builds five plausible hour-by-hour shapes the views-per-hour graph could have taken — or draw the curve you actually saw and get five reads on that instead. Every guess adds up to your exact view gain.</p>
   </div>
 
   <div class="tool-grid">
@@ -319,6 +379,16 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
           Reroll
         </button>
+        <button class="btn-ghost" id="drawBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8 4 5"/><path d="M3 21h18"/></svg>
+          Draw Graph
+        </button>
+      </div>
+      <div class="draw-chip" id="drawChip">
+        <div class="mini" id="drawMini"></div>
+        <span>Using <b>your drawn shape</b> as the base.</span>
+        <button id="editDrawBtn">Edit</button>
+        <button id="clearDrawBtn">Use auto shapes</button>
       </div>
       <span class="input-error" id="inputError"></span>
     </div>
@@ -334,7 +404,7 @@
 
     <div class="results" id="results">
       <div class="results-head">
-        <h3>Five possible shapes</h3>
+        <h3 id="resultsTitle">Five possible shapes</h3>
         <span class="span-note">Hover or tap a bar for that hour's numbers.</span>
       </div>
       <div id="cards"></div>
@@ -346,6 +416,29 @@
 
   </div>
 </main>
+
+<div class="overlay" id="drawOverlay">
+  <div class="modal">
+    <h3>Draw the graph you saw</h3>
+    <p class="modal-sub">Drag across the box to trace the shape of the graph from your analytics — height is relative, so don't worry about exact numbers. The tool scales whatever you draw so the hours still add up to your real view gain, then builds variations around it. Anything you leave untouched gets filled in by joining the nearest points you did draw.</p>
+    <div class="canvas-wrap">
+      <canvas id="drawCanvas" width="800" height="200"></canvas>
+      <div class="canvas-legend">
+        <span id="legStart">Hour 1</span>
+        <span id="legMid">Hour 24</span>
+        <span id="legEnd">Hour 48</span>
+      </div>
+    </div>
+    <div class="draw-error" id="drawError"></div>
+    <div class="modal-actions">
+      <span class="modal-hint" id="drawHint">Drag left to right. Draw over a section again to correct it.</span>
+      <span class="spacer"></span>
+      <button class="btn-ghost" id="drawClear">Clear</button>
+      <button class="btn-ghost" id="drawCancel">Cancel</button>
+      <button class="btn-primary" id="drawApply">Use This Shape</button>
+    </div>
+  </div>
+</div>
 
 <div id="tooltip"></div>
 
@@ -367,6 +460,23 @@
   var results = document.getElementById('results');
   var cards = document.getElementById('cards');
   var tooltip = document.getElementById('tooltip');
+  var resultsTitle = document.getElementById('resultsTitle');
+  var drawBtn = document.getElementById('drawBtn');
+  var drawChip = document.getElementById('drawChip');
+  var drawMini = document.getElementById('drawMini');
+  var editDrawBtn = document.getElementById('editDrawBtn');
+  var clearDrawBtn = document.getElementById('clearDrawBtn');
+  var drawOverlay = document.getElementById('drawOverlay');
+  var drawCanvas = document.getElementById('drawCanvas');
+  var drawError = document.getElementById('drawError');
+  var drawClear = document.getElementById('drawClear');
+  var drawCancel = document.getElementById('drawCancel');
+  var drawApply = document.getElementById('drawApply');
+  var legStart = document.getElementById('legStart');
+  var legMid = document.getElementById('legMid');
+  var legEnd = document.getElementById('legEnd');
+
+  var drawing = null;   // committed curve (array of 0..1 weights, one per hour)
 
   var MAX_HOURS = 720; // 30 days
   var state = null;
@@ -508,6 +618,69 @@
     }
   ];
 
+  /* ---------- drawn-mode variants ----------
+     These all start from the user's traced curve rather than an invented one. */
+
+  function smooth3(w){
+    var out = [], n = w.length;
+    for(var i = 0; i < n; i++){
+      var a = w[Math.max(0, i - 1)], b = w[i], c = w[Math.min(n - 1, i + 1)];
+      out.push((a + b + c) / 3);
+    }
+    return out;
+  }
+
+  var DRAWN_VARIANTS = [
+    {
+      name: 'Your Drawing — Traced',
+      blurb: 'Your curve exactly as you drew it, scaled so the hours add up to your real view gain.',
+      build: function(base){ return base.slice(); }
+    },
+    {
+      name: 'Tight Variant',
+      blurb: 'Your shape with a little hour-to-hour wobble on top — real data is never perfectly smooth.',
+      build: function(base){
+        return base.map(function(v){ return Math.max(0, v * noise(0.09)); });
+      }
+    },
+    {
+      name: 'Loose Variant',
+      blurb: 'The same curve with a lot more jitter, for when the hourly numbers bounced around more than the overall trend suggests.',
+      build: function(base){
+        return base.map(function(v){ return Math.max(0, v * noise(0.22)); });
+      }
+    },
+    {
+      name: 'Smoothed',
+      blurb: 'A rolling average of your drawing — in case you traced the peaks sharper than they actually were.',
+      build: function(base){ return smooth3(smooth3(base)); }
+    },
+    {
+      name: 'Sharpened',
+      blurb: 'Peaks pushed higher and quiet hours pushed lower, for when the real graph was spikier than a drawn line can capture.',
+      build: function(base){
+        var max = Math.max.apply(null, base) || 1;
+        var g = rand(1.45, 2.0);
+        return base.map(function(v){
+          return Math.max(0, Math.pow(v / max, g) * max * noise(0.08));
+        });
+      }
+    }
+  ];
+
+  /* Resample a drawn curve to a different number of hours (linear interpolation). */
+  function resample(src, n){
+    var m = src.length;
+    if(m === n) return src.slice();
+    var out = [];
+    for(var i = 0; i < n; i++){
+      var pos = n === 1 ? 0 : i / (n - 1) * (m - 1);
+      var lo = Math.floor(pos), hi = Math.min(m - 1, lo + 1), f = pos - lo;
+      out.push(src[lo] * (1 - f) + src[hi] * f);
+    }
+    return out;
+  }
+
   /* Turn weights into whole views that sum to exactly `total`
      (largest-remainder method, so nothing is lost to rounding). */
   function distribute(weights, total){
@@ -551,7 +724,7 @@
     var avg = state.gain / n;
 
     var card = document.createElement('div');
-    card.className = 'guess-card';
+    card.className = drawing ? 'guess-card drawn' : 'guess-card';
 
     var head = document.createElement('div');
     head.className = 'guess-head';
@@ -611,10 +784,22 @@
 
   function render(){
     cards.innerHTML = '';
-    for(var s = 0; s < SHAPES.length; s++){
-      var weights = SHAPES[s].build(state.hours);
-      var series = distribute(weights, state.gain);
-      cards.appendChild(buildCard(SHAPES[s], s, series));
+    var s, weights, series;
+    if(drawing){
+      var base = resample(drawing, state.hours);
+      resultsTitle.textContent = 'Five reads on your drawing';
+      for(s = 0; s < DRAWN_VARIANTS.length; s++){
+        weights = DRAWN_VARIANTS[s].build(base);
+        series = distribute(weights, state.gain);
+        cards.appendChild(buildCard(DRAWN_VARIANTS[s], s, series));
+      }
+    } else {
+      resultsTitle.textContent = 'Five possible shapes';
+      for(s = 0; s < SHAPES.length; s++){
+        weights = SHAPES[s].build(state.hours);
+        series = distribute(weights, state.gain);
+        cards.appendChild(buildCard(SHAPES[s], s, series));
+      }
     }
     results.style.display = 'flex';
     summaryCard.style.display = 'block';
@@ -656,6 +841,216 @@
     }
   }, { passive:true });
   document.addEventListener('scroll', function(){ tooltip.style.display = 'none'; }, true);
+
+  /* ---------- draw graph ---------- */
+  var ctx = drawCanvas.getContext('2d');
+  var draft = null;      // array of length drawCols, null = not drawn yet
+  var drawCols = 48;
+  var isDrawing = false;
+  var lastCol = null;
+  var COL_MIN = 11;      // px per hour column inside the canvas
+
+  function currentHours(){
+    var h;
+    if(customSpan.checked){
+      h = parseNum(spanHours);
+    } else {
+      h = autoSpan();
+    }
+    if(h === null || isNaN(h) || h < 1) return null;
+    if(h > MAX_HOURS) return null;
+    return h;
+  }
+
+  function sizeCanvas(n){
+    var wrapW = drawCanvas.parentNode.clientWidth - 26;
+    var w = Math.max(wrapW, n * COL_MIN);
+    var dpr = window.devicePixelRatio || 1;
+    drawCanvas.style.width = w + 'px';
+    drawCanvas.style.height = '200px';
+    drawCanvas.width = Math.round(w * dpr);
+    drawCanvas.height = Math.round(200 * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return w;
+  }
+
+  function paint(){
+    var w = parseFloat(drawCanvas.style.width);
+    var h = 200;
+    var cw = w / drawCols;
+    ctx.clearRect(0, 0, w, h);
+
+    // grid: a line every 6 hours, brighter every 24
+    for(var i = 0; i <= drawCols; i++){
+      if(i % 6 !== 0) continue;
+      ctx.strokeStyle = (i % 24 === 0) ? '#3A414C' : '#232830';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(i * cw) + 0.5, 0);
+      ctx.lineTo(Math.round(i * cw) + 0.5, h);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#232830';
+    for(var y = 1; y < 4; y++){
+      ctx.beginPath();
+      ctx.moveTo(0, Math.round(h * y / 4) + 0.5);
+      ctx.lineTo(w, Math.round(h * y / 4) + 0.5);
+      ctx.stroke();
+    }
+
+    // drawn bars
+    for(var c = 0; c < drawCols; c++){
+      if(draft[c] === null) continue;
+      var bh = Math.max(1, draft[c] * (h - 6));
+      var grad = ctx.createLinearGradient(0, h - bh, 0, h);
+      grad.addColorStop(0, '#F2B84B');
+      grad.addColorStop(1, 'rgba(242,184,75,0.35)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(c * cw + 0.6, h - bh, Math.max(1, cw - 1.2), bh);
+    }
+  }
+
+  function fillGaps(arr){
+    // linear interpolation across undrawn columns; edges extend the nearest value
+    var n = arr.length, out = arr.slice(), i, prev = -1;
+    var any = false;
+    for(i = 0; i < n; i++) if(out[i] !== null) { any = true; break; }
+    if(!any) return null;
+    for(i = 0; i < n; i++){
+      if(out[i] === null) continue;
+      if(prev === -1){
+        for(var j = 0; j < i; j++) out[j] = out[i];
+      } else if(i - prev > 1){
+        for(var k = prev + 1; k < i; k++){
+          var f = (k - prev) / (i - prev);
+          out[k] = out[prev] * (1 - f) + out[i] * f;
+        }
+      }
+      prev = i;
+    }
+    for(i = prev + 1; i < n; i++) out[i] = out[prev];
+    return out;
+  }
+
+  function pointerToCol(e){
+    var r = drawCanvas.getBoundingClientRect();
+    var x = e.clientX - r.left;
+    var y = e.clientY - r.top;
+    var col = Math.floor(x / (r.width / drawCols));
+    col = Math.max(0, Math.min(drawCols - 1, col));
+    var val = 1 - (y / r.height);
+    return { col: col, val: Math.max(0, Math.min(1, val)) };
+  }
+
+  function stroke(e){
+    var p = pointerToCol(e);
+    if(lastCol !== null && Math.abs(p.col - lastCol) > 1){
+      // fill the columns skipped by a fast drag
+      var from = lastCol, to = p.col;
+      var fromVal = draft[from] === null ? p.val : draft[from];
+      var step = to > from ? 1 : -1;
+      for(var c = from + step; c !== to; c += step){
+        var f = Math.abs(c - from) / Math.abs(to - from);
+        draft[c] = fromVal * (1 - f) + p.val * f;
+      }
+    }
+    draft[p.col] = p.val;
+    lastCol = p.col;
+    paint();
+  }
+
+  drawCanvas.addEventListener('pointerdown', function(e){
+    isDrawing = true;
+    lastCol = null;
+    drawCanvas.setPointerCapture(e.pointerId);
+    stroke(e);
+    e.preventDefault();
+  });
+  drawCanvas.addEventListener('pointermove', function(e){
+    if(!isDrawing) return;
+    stroke(e);
+    e.preventDefault();
+  });
+  drawCanvas.addEventListener('pointerup', function(){ isDrawing = false; lastCol = null; });
+  drawCanvas.addEventListener('pointercancel', function(){ isDrawing = false; lastCol = null; });
+
+  function openDraw(){
+    clearError();
+    drawError.style.display = 'none';
+    var n = currentHours();
+    if(n === null){
+      return showError('Set a valid window first — either two day numbers, or a custom span between 1 and ' + MAX_HOURS + ' hours.');
+    }
+    drawCols = n;
+    // carry an existing drawing over, resampled if the span changed
+    if(drawing){
+      draft = resample(drawing, n);
+    } else {
+      draft = [];
+      for(var i = 0; i < n; i++) draft.push(null);
+    }
+    legStart.textContent = 'Hour 1';
+    legMid.textContent = 'Hour ' + Math.ceil(n / 2);
+    legEnd.textContent = 'Hour ' + n;
+    drawOverlay.classList.add('on');
+    sizeCanvas(n);
+    paint();
+  }
+
+  function closeDraw(){ drawOverlay.classList.remove('on'); isDrawing = false; }
+
+  function renderChipMini(curve){
+    drawMini.innerHTML = '';
+    var max = Math.max.apply(null, curve) || 1;
+    var step = Math.max(1, Math.ceil(curve.length / 40));
+    for(var i = 0; i < curve.length; i += step){
+      var bar = document.createElement('i');
+      bar.style.height = Math.max(4, (curve[i] / max) * 100) + '%';
+      drawMini.appendChild(bar);
+    }
+  }
+
+  drawBtn.addEventListener('click', openDraw);
+  editDrawBtn.addEventListener('click', openDraw);
+  drawCancel.addEventListener('click', closeDraw);
+  drawOverlay.addEventListener('click', function(e){ if(e.target === drawOverlay) closeDraw(); });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && drawOverlay.classList.contains('on')) closeDraw();
+  });
+
+  drawClear.addEventListener('click', function(){
+    draft = [];
+    for(var i = 0; i < drawCols; i++) draft.push(null);
+    drawError.style.display = 'none';
+    paint();
+  });
+
+  drawApply.addEventListener('click', function(){
+    var filled = fillGaps(draft);
+    if(!filled){
+      drawError.textContent = 'Draw something first — drag across the box to trace your graph.';
+      drawError.style.display = 'block';
+      return;
+    }
+    var sum = 0;
+    for(var i = 0; i < filled.length; i++) sum += filled[i];
+    if(sum <= 0){
+      drawError.textContent = 'That curve is flat at zero — raise part of it so there\u2019s a shape to work from.';
+      drawError.style.display = 'block';
+      return;
+    }
+    drawing = filled;
+    renderChipMini(drawing);
+    drawChip.classList.add('on');
+    closeDraw();
+    generate();
+  });
+
+  clearDrawBtn.addEventListener('click', function(){
+    drawing = null;
+    drawChip.classList.remove('on');
+    if(state) { clearError(); generate(); }
+  });
 
   /* ---------- run ---------- */
   function generate(){
