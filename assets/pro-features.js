@@ -53,13 +53,24 @@
   }
 
   function applyBackground(val) {
-    if (!val) { document.body.style.background = ""; return; }
-    if (val.type === "color" && val.color) {
-      document.body.style.background = val.color;
-    } else if (val.type === "image" && val.url) {
-      document.body.style.background =
-        "url('" + val.url + "') center center / cover no-repeat fixed, var(--bg, #0B0D10)";
+    // Uses a <style> rule instead of document.body.style, because this
+    // script runs from <head> — document.body doesn't exist yet at that
+    // point, and touching it directly throws and kills the rest of the
+    // script before the button ever gets created.
+    var css = "";
+    if (val && val.type === "color" && val.color) {
+      css = "body{background:" + val.color + " !important;}";
+    } else if (val && val.type === "image" && val.url) {
+      var safeUrl = String(val.url).replace(/["'\\]/g, "");
+      css = "body{background:url('" + safeUrl + "') center center / cover no-repeat fixed, var(--bg, #0B0D10) !important;}";
     }
+    var style = document.getElementById("bsb-pro-bg-style");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "bsb-pro-bg-style";
+      (document.head || document.documentElement).appendChild(style);
+    }
+    style.textContent = css;
   }
 
   function persist(val) {
