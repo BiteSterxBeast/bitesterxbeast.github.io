@@ -429,6 +429,22 @@
     <h3>VPH Guesser</h3>
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
+        <span class="v">V0.12</span>
+        <span class="d">September 7, 2026</span>
+      </div>
+      <ul>
+        <li>Added an Advanced button for entering per-day view counts. Any day you fill in is locked to that exact number and the hours inside it are guessed around it — the start and end view counts stay untouched.</li>
+        <li>Days left blank share whatever's left over from the window gain, split in proportion to how many hours each day holds.</li>
+        <li>Advanced shows a live tally of the window gain, how much you've entered, how much is left over, and how many days are still blank, and blocks numbers that overshoot the window gain.</li>
+        <li>Per-day counts combine with a drawn graph — the drawing sets the shape while the daily totals stay exact.</li>
+        <li>Every graph now fits in a single window instead of scrolling sideways. Bars squash to fit, gaps close up on long windows, and gridlines thin out automatically.</li>
+        <li>The drawing canvas fits the window too, so a 28-day span can be traced in one pass without scrolling.</li>
+        <li>Bar hovering is now resolved from the cursor position rather than the bar itself, so tooltips still work when bars are under a pixel wide.</li>
+        <li>Guess cards note when daily totals are locked, making it clear which numbers are real and which are estimated.</li>
+      </ul>
+    </div>
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
         <span class="v">V0.11</span>
         <span class="d">September 7, 2026</span>
       </div>
