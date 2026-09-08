@@ -231,7 +231,8 @@
   .res-opt:hover:not(:disabled){ border-color:var(--teal); color:var(--teal); }
   .res-opt.active{ border-color:var(--teal); color:var(--teal); background:rgba(52,214,196,0.1); }
   .res-opt:disabled{ opacity:0.35; cursor:default; }
-  .res-hint{ font-size:11.5px; color:var(--dim); flex:1; min-width:180px; }
+  .res-hint{ font-size:11.5px; color:var(--dim); flex:1 1 100%; min-width:180px; }
+  .res-divider{ width:1px; height:18px; background:var(--line); margin:0 4px; }
 
   .crop-stage{ display:none; }
   .crop-stage.on{ display:block; }
@@ -448,7 +449,7 @@
 <main>
   <a class="back-link" href="../index.html">← Back to home</a>
   <div class="page-head">
-    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.15</span>
+    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.151</span>
     <h2>VPH Guesser</h2>
     <p>You know the view count on two different days — but not what happened in between. Drop in both numbers and this builds five plausible hour-by-hour shapes the views-per-hour graph could have taken — or draw the curve you actually saw and get five reads on that instead. Know the totals for individual days too? Advanced locks each of those days to its real number. Every guess adds up to your exact view gain.</p>
   </div>
@@ -564,6 +565,10 @@
         <span class="res-label">Draw by</span>
         <button class="res-opt active" id="resDay">Day</button>
         <button class="res-opt" id="resHour">Hour</button>
+        <span class="res-divider"></span>
+        <span class="res-label">Show as</span>
+        <button class="res-opt active" id="styleBar">Bars</button>
+        <button class="res-opt" id="styleLine">Line</button>
         <span class="res-hint" id="resHint"></span>
       </div>
       <div class="canvas-wrap">
@@ -683,6 +688,8 @@
   var resDay = document.getElementById('resDay');
   var resHour = document.getElementById('resHour');
   var resHint = document.getElementById('resHint');
+  var styleBar = document.getElementById('styleBar');
+  var styleLine = document.getElementById('styleLine');
   var drawCancel = document.getElementById('drawCancel');
   var drawApply = document.getElementById('drawApply');
   var legStart = document.getElementById('legStart');
@@ -1185,6 +1192,7 @@
   var baseDraft = null;
   var lineToggle = false; // persistent line mode, for touch where Shift isn't available
   var drawRes = 'day';    // 'day' = one column per day (default), 'hour' = one per hour
+  var drawStyle = 'bar';  // how the drawing is rendered: 'bar' or 'line'
   var drawBlocks = null;  // day blocks the canvas columns map to
   var bgAlpha = 0.55;
 
@@ -1254,20 +1262,73 @@
     }
     ctx.restore();
 
-    // drawn bars
-    for(var c = 0; c < drawCols; c++){
-      if(draft[c] === null) continue;
-      var bh = Math.max(1, draft[c] * (h - 6));
-      var grad = ctx.createLinearGradient(0, h - bh, 0, h);
-      grad.addColorStop(0, '#F2B84B');
-      grad.addColorStop(1, 'rgba(242,184,75,0.35)');
-      ctx.fillStyle = grad;
-      var pad = cw > 4 ? 0.6 : 0;
-      ctx.save();
-      if(bgImage) ctx.globalAlpha = 0.82;
-      ctx.fillRect(c * cw + pad, h - bh, Math.max(0.8, cw - pad * 2), bh);
-      ctx.restore();
+    // the curve itself, as bars or as a line
+    var c, y;
+    ctx.save();
+    if(bgImage) ctx.globalAlpha = 0.82;
+
+    if(drawStyle === 'line'){
+      // walk runs of consecutive drawn columns so gaps stay gaps
+      var run = [];
+      for(c = 0; c <= drawCols; c++){
+        var has = c < drawCols && draft[c] !== null;
+        if(has){
+          run.push({ x: (c + 0.5) * cw, y: h - Math.max(1, draft[c] * (h - 6)) });
+          continue;
+        }
+        if(run.length){
+          if(run.length === 1){
+            ctx.beginPath();
+            ctx.arc(run[0].x, run[0].y, 2.6, 0, Math.PI * 2);
+            ctx.fillStyle = '#F2B84B';
+            ctx.fill();
+          } else {
+            // soft fill under the line
+            var fg = ctx.createLinearGradient(0, 0, 0, h);
+            fg.addColorStop(0, 'rgba(242,184,75,0.30)');
+            fg.addColorStop(1, 'rgba(242,184,75,0.03)');
+            ctx.beginPath();
+            ctx.moveTo(run[0].x, h);
+            for(y = 0; y < run.length; y++) ctx.lineTo(run[y].x, run[y].y);
+            ctx.lineTo(run[run.length - 1].x, h);
+            ctx.closePath();
+            ctx.fillStyle = fg;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(run[0].x, run[0].y);
+            for(y = 1; y < run.length; y++) ctx.lineTo(run[y].x, run[y].y);
+            ctx.strokeStyle = '#F2B84B';
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            if(cw > 10){
+              ctx.fillStyle = '#F2B84B';
+              for(y = 0; y < run.length; y++){
+                ctx.beginPath();
+                ctx.arc(run[y].x, run[y].y, 2.4, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+          }
+          run = [];
+        }
+      }
+    } else {
+      for(c = 0; c < drawCols; c++){
+        if(draft[c] === null) continue;
+        var bh = Math.max(1, draft[c] * (h - 6));
+        var grad = ctx.createLinearGradient(0, h - bh, 0, h);
+        grad.addColorStop(0, '#F2B84B');
+        grad.addColorStop(1, 'rgba(242,184,75,0.35)');
+        ctx.fillStyle = grad;
+        var pad = cw > 4 ? 0.6 : 0;
+        ctx.fillRect(c * cw + pad, h - bh, Math.max(0.8, cw - pad * 2), bh);
+      }
     }
+    ctx.restore();
 
     // marker showing where the next straight line would start from
     if(anchor && (lineToggle || lineDrag)){
@@ -1401,6 +1462,15 @@
   }
   drawCanvas.addEventListener('pointerup', endStroke);
   drawCanvas.addEventListener('pointercancel', endStroke);
+
+  function setStyle(mode){
+    drawStyle = mode;
+    styleBar.classList.toggle('active', mode === 'bar');
+    styleLine.classList.toggle('active', mode === 'line');
+    paint();
+  }
+  styleBar.addEventListener('click', function(){ setStyle('bar'); });
+  styleLine.addEventListener('click', function(){ setStyle('line'); });
 
   resDay.addEventListener('click', function(){ switchRes('day'); });
   resHour.addEventListener('click', function(){ switchRes('hour'); });
