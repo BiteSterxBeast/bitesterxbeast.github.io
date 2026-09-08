@@ -172,26 +172,51 @@
     ensureStyleTag("bsb-pro-bg-style").textContent = css;
   }
 
+  // Applied optimistically from cache to avoid a flash — corrected below
+  // once we actually know whether this visitor currently has the booster
+  // role, since access can be revoked (boost lapsed) between visits.
   applyState(readLocal());
 
   document.addEventListener("DOMContentLoaded", function () {
-    injectButton();
-
     var token = null;
     try { token = localStorage.getItem(SESSION_KEY); } catch (e) {}
-    if (token && CFG.api) {
-      fetch(CFG.api + "/data/pro-background", { headers: { Authorization: "Bearer " + token } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) {
-          if (j && j.ok && j.value !== undefined) {
-            applyState(j.value);
-            saveLocal(j.value);
-            refreshPanel();
-          }
-        })
-        .catch(function () {});
+
+    if (!token || !CFG.api) {
+      revokeAccess();
+      return;
     }
+
+    fetch(CFG.api + "/me", { headers: { Authorization: "Bearer " + token } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.ok || !j.user || !j.user.pro) {
+          revokeAccess();
+          return;
+        }
+        // Confirmed booster — show the button and pull the authoritative
+        // saved background (it follows them across devices).
+        injectButton();
+        fetch(CFG.api + "/data/pro-background", { headers: { Authorization: "Bearer " + token } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j2) {
+            if (j2 && j2.ok && j2.value !== undefined) {
+              applyState(j2.value);
+              saveLocal(j2.value);
+              refreshPanel();
+            }
+          })
+          .catch(function () {});
+      })
+      .catch(function () {
+        // Network hiccup — leave things as they are rather than flicker
+        // access on and off for a transient failure.
+      });
   });
+
+  function revokeAccess() {
+    applyState(null);
+    saveLocal(null);
+  }
 
   function readLocal() {
     try {
