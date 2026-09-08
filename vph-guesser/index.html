@@ -215,6 +215,24 @@
   .bg-bar button:hover{ border-color:var(--live); color:var(--live); }
   .bg-bar .spacer{ flex:1; }
 
+  .res-bar{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;
+  }
+  .res-label{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--dim); font-weight:600;
+  }
+  .res-opt{
+    font-family:'Inter',sans-serif; font-size:12px; font-weight:600;
+    border-radius:6px; border:1px solid var(--line); background:var(--panel-2);
+    color:var(--muted); padding:6px 14px; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .res-opt:hover:not(:disabled){ border-color:var(--teal); color:var(--teal); }
+  .res-opt.active{ border-color:var(--teal); color:var(--teal); background:rgba(52,214,196,0.1); }
+  .res-opt:disabled{ opacity:0.35; cursor:default; }
+  .res-hint{ font-size:11.5px; color:var(--dim); flex:1; min-width:180px; }
+
   .crop-stage{ display:none; }
   .crop-stage.on{ display:block; }
   .crop-area{
@@ -319,6 +337,10 @@
   }
   .modal-actions .spacer{ flex:1; }
   .modal-hint{ font-size:12px; color:var(--dim); }
+  .modal-hint b{ color:var(--muted); font-weight:600; }
+  .btn-ghost.active{
+    border-color:var(--teal); color:var(--teal); background:rgba(52,214,196,0.08);
+  }
   .draw-error{ font-size:12.5px; color:var(--live); display:none; margin-top:10px; }
 
   /* ---------- summary ---------- */
@@ -426,7 +448,7 @@
 <main>
   <a class="back-link" href="../index.html">← Back to home</a>
   <div class="page-head">
-    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.131</span>
+    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.15</span>
     <h2>VPH Guesser</h2>
     <p>You know the view count on two different days — but not what happened in between. Drop in both numbers and this builds five plausible hour-by-hour shapes the views-per-hour graph could have taken — or draw the curve you actually saw and get five reads on that instead. Know the totals for individual days too? Advanced locks each of those days to its real number. Every guess adds up to your exact view gain.</p>
   </div>
@@ -527,7 +549,7 @@
 <div class="overlay" id="drawOverlay">
   <div class="modal">
     <h3>Draw the graph you saw</h3>
-    <p class="modal-sub">Drag across the box to trace the shape of the graph from your analytics, or hit Trace Image to load a screenshot and draw straight over the top of it — height is relative, so don't worry about exact numbers. The tool scales whatever you draw so the hours still add up to your real view gain, then builds variations around it. Anything you leave untouched gets filled in by joining the nearest points you did draw.</p>
+    <p class="modal-sub">Trace the shape of the graph from your analytics — one bar per day by default, so you sketch the day-to-day trend and the tool fills in each day’s hourly rise and fall for you. Hit Trace Image to load a screenshot and draw straight over the top of it — height is relative, so don't worry about exact numbers. The tool scales whatever you draw so the hours still add up to your real view gain, then builds variations around it. Anything you leave untouched gets filled in by joining the nearest points you did draw.</p>
     <div id="drawStage">
       <div class="bg-bar" id="bgBar">
         <span>Tracing image</span>
@@ -537,6 +559,12 @@
         </label>
         <span class="spacer"></span>
         <button id="bgRemove">Remove image</button>
+      </div>
+      <div class="res-bar">
+        <span class="res-label">Draw by</span>
+        <button class="res-opt active" id="resDay">Day</button>
+        <button class="res-opt" id="resHour">Hour</button>
+        <span class="res-hint" id="resHint"></span>
       </div>
       <div class="canvas-wrap">
         <canvas id="drawCanvas" width="800" height="200"></canvas>
@@ -548,11 +576,15 @@
       </div>
       <div class="draw-error" id="drawError"></div>
       <div class="modal-actions">
-        <span class="modal-hint" id="drawHint">Drag left to right. Draw over a section again to correct it.</span>
+        <span class="modal-hint" id="drawHint">Drag to sketch freehand. Hold <b>Shift</b> and click to join points with straight lines — or turn on Line for the same thing on touch.</span>
         <span class="spacer"></span>
         <button class="btn-ghost" id="traceBtn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15l5-4 4 3 4-5 5 4"/></svg>
           Trace Image
+        </button>
+        <button class="btn-ghost" id="lineBtn" aria-pressed="false">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18L20 6"/><circle cx="4" cy="18" r="2.4" fill="currentColor"/><circle cx="20" cy="6" r="2.4" fill="currentColor"/></svg>
+          Line
         </button>
         <button class="btn-ghost" id="drawClear">Clear</button>
         <button class="btn-ghost" id="drawCancel">Cancel</button>
@@ -647,6 +679,10 @@
   var drawCanvas = document.getElementById('drawCanvas');
   var drawError = document.getElementById('drawError');
   var drawClear = document.getElementById('drawClear');
+  var lineBtn = document.getElementById('lineBtn');
+  var resDay = document.getElementById('resDay');
+  var resHour = document.getElementById('resHour');
+  var resHint = document.getElementById('resHint');
   var drawCancel = document.getElementById('drawCancel');
   var drawApply = document.getElementById('drawApply');
   var legStart = document.getElementById('legStart');
@@ -875,6 +911,21 @@
     return out;
   }
 
+  /* Hourly texture used when the drawing sets daily totals: the shape of each
+     day comes from a normal day/night rhythm plus noise rather than from the
+     drawn line, so the result looks like real hourly data instead of a smooth
+     curve sliced into 24 pieces. */
+  function intradayWeights(n){
+    var peak = rand(16.5, 21);
+    var strength = rand(0.5, 0.85);
+    var w = [];
+    for(var i = 0; i < n; i++){
+      var base = Math.max(0.08, dailyRhythm(i, peak, strength));
+      w.push(base * noise(0.3));
+    }
+    return w;
+  }
+
   /* Split the window into day blocks. The last block is short if the span
      isn't a whole number of days. */
   function dayBlocks(hours){
@@ -917,13 +968,13 @@
      With per-day totals set, each day block is distributed to its own exact
      total so the daily numbers come out right; otherwise the whole window is
      distributed to the total gain in one go. */
-  function buildSeries(weights){
-    if(!state.dayTotals) return distribute(weights, state.gain);
+  function buildSeries(weights, dayTotals){
+    if(!dayTotals) return distribute(weights, state.gain);
     var out = new Array(state.hours), b, i;
     for(b = 0; b < state.blocks.length; b++){
       var blk = state.blocks[b];
       var slice = weights.slice(blk.start, blk.start + blk.len);
-      var part = distribute(slice, state.dayTotals[b]);
+      var part = distribute(slice, dayTotals[b]);
       for(i = 0; i < part.length; i++) out[blk.start + i] = part[i];
     }
     return out;
@@ -937,7 +988,7 @@
     return 'Day ' + dayNum + ' · hour ' + hourOfDay;
   }
 
-  function buildCard(shape, index, series){
+  function buildCard(shape, index, series, fromDaily){
     var n = series.length;
     var peakVal = 0, peakIdx = 0, i;
     for(i = 0; i < n; i++){
@@ -965,13 +1016,14 @@
       'Peak <b>' + fmt(peakVal) + '</b> VPH at hour ' + (peakIdx + 1) +
       ' &nbsp;·&nbsp; Quietest <b>' + fmt(Math.min.apply(null, series)) + '</b> VPH' +
       ' &nbsp;·&nbsp; Avg <b>' + fmt(Math.round(avg)) + '</b> VPH' +
-      (state.dayTotals ? ' &nbsp;·&nbsp; <b>daily totals locked</b>' : '');
+      (fromDaily ? ' &nbsp;·&nbsp; <b>daily totals from your drawing</b>'
+                 : (state.dayTotalsBase ? ' &nbsp;·&nbsp; <b>daily totals locked</b>' : ''));
     head.appendChild(stats);
     card.appendChild(head);
 
     var sub = document.createElement('p');
     sub.className = 'guess-sub';
-    sub.textContent = shape.blurb;
+    sub.textContent = (fromDaily && shape.dayBlurb) ? shape.dayBlurb : shape.blurb;
     card.appendChild(sub);
 
     var scroll = document.createElement('div');
@@ -1007,23 +1059,37 @@
 
   function render(){
     cards.innerHTML = '';
-    var s, weights, series;
-    if(drawing){
-      var base = resample(drawing, state.hours);
+    var v, weights, series, dayTotals, i;
+
+    if(drawing && drawing.res === 'day'){
+      // the drawing sets each day's total; the hours inside are generated
+      var dayBase = resample(drawing.curve, state.blocks.length);
       resultsTitle.textContent = 'Five reads on your drawing';
-      for(s = 0; s < DRAWN_VARIANTS.length; s++){
-        weights = DRAWN_VARIANTS[s].build(base);
-        series = buildSeries(weights);
-        cards.appendChild(buildCard(DRAWN_VARIANTS[s], s, series));
+      for(v = 0; v < DRAWN_VARIANTS.length; v++){
+        var dw = DRAWN_VARIANTS[v].build(dayBase);
+        var res = resolveDayTotals(state.blocks, state.gain, state.dayA, dw);
+        dayTotals = (res && !res.error) ? res.totals : state.dayTotalsBase;
+        series = buildSeries(intradayWeights(state.hours), dayTotals);
+        cards.appendChild(buildCard(DRAWN_VARIANTS[v], v, series, true));
+      }
+    } else if(drawing){
+      // hour-resolution drawing — the traced line is the hourly shape itself
+      var hourBase = resample(drawing.curve, state.hours);
+      resultsTitle.textContent = 'Five reads on your drawing';
+      for(v = 0; v < DRAWN_VARIANTS.length; v++){
+        weights = DRAWN_VARIANTS[v].build(hourBase);
+        series = buildSeries(weights, state.dayTotalsBase);
+        cards.appendChild(buildCard(DRAWN_VARIANTS[v], v, series, false));
       }
     } else {
       resultsTitle.textContent = 'Five possible shapes';
-      for(s = 0; s < SHAPES.length; s++){
-        weights = SHAPES[s].build(state.hours);
-        series = buildSeries(weights);
-        cards.appendChild(buildCard(SHAPES[s], s, series));
+      for(v = 0; v < SHAPES.length; v++){
+        weights = SHAPES[v].build(state.hours);
+        series = buildSeries(weights, state.dayTotalsBase);
+        cards.appendChild(buildCard(SHAPES[v], v, series, false));
       }
     }
+
     results.style.display = 'flex';
     summaryCard.style.display = 'block';
     rerollBtn.disabled = false;
@@ -1112,6 +1178,14 @@
   var isDrawing = false;
   var lastCol = null;
   var bgImage = null;     // cropped screenshot used as a tracing guide
+  var anchor = null;      // last committed point, where the next straight line starts
+  var lineDrag = false;
+  var lineFrom = null;
+  var livePoint = null;
+  var baseDraft = null;
+  var lineToggle = false; // persistent line mode, for touch where Shift isn't available
+  var drawRes = 'day';    // 'day' = one column per day (default), 'hour' = one per hour
+  var drawBlocks = null;  // day blocks the canvas columns map to
   var bgAlpha = 0.55;
 
   function currentHours(){
@@ -1153,17 +1227,18 @@
     }
 
     // grid: keep roughly 24 lines however long the window is
-    var step = 6;
-    var steps = [6, 12, 24, 48, 72, 168, 336];
+    var steps = drawRes === 'day' ? [1, 2, 7, 14, 28, 56] : [6, 12, 24, 48, 72, 168, 336];
+    var step = steps[0];
     for(var si = 0; si < steps.length; si++){
       step = steps[si];
       if(drawCols / step <= 24) break;
     }
+    var major = drawRes === 'day' ? 7 : 24;
     ctx.save();
     if(bgImage) ctx.globalAlpha = 0.35;
     for(var i = 0; i <= drawCols; i++){
       if(i % step !== 0) continue;
-      ctx.strokeStyle = (i % 24 === 0) ? '#3A414C' : '#232830';
+      ctx.strokeStyle = (i % major === 0) ? '#3A414C' : '#232830';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(Math.round(i * cw) + 0.5, 0);
@@ -1192,6 +1267,19 @@
       if(bgImage) ctx.globalAlpha = 0.82;
       ctx.fillRect(c * cw + pad, h - bh, Math.max(0.8, cw - pad * 2), bh);
       ctx.restore();
+    }
+
+    // marker showing where the next straight line would start from
+    if(anchor && (lineToggle || lineDrag)){
+      var ax = (anchor.col + 0.5) * cw;
+      var ay = h - Math.max(1, anchor.val * (h - 6));
+      ctx.beginPath();
+      ctx.arc(ax, ay, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#34D6C4';
+      ctx.fill();
+      ctx.strokeStyle = '#0B0D10';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
   }
 
@@ -1244,20 +1332,118 @@
     paint();
   }
 
+  /* Straight segment between two points — every column in between gets a
+     value on the line, so flat stretches and clean slopes come out exact. */
+  function applyLine(a, b){
+    if(a.col === b.col){ draft[b.col] = b.val; return; }
+    var lo = a.col < b.col ? a : b;
+    var hi = a.col < b.col ? b : a;
+    for(var c = lo.col; c <= hi.col; c++){
+      var f = (c - lo.col) / (hi.col - lo.col);
+      draft[c] = lo.val * (1 - f) + hi.val * f;
+    }
+  }
+
+  function lineModeActive(e){ return lineToggle || (e && e.shiftKey); }
+
   drawCanvas.addEventListener('pointerdown', function(e){
-    isDrawing = true;
-    lastCol = null;
     drawCanvas.setPointerCapture(e.pointerId);
-    stroke(e);
+    var p = pointerToCol(e);
+
+    if(lineModeActive(e) && anchor){
+      // straight segment from the last point, rubber-banded until release
+      lineDrag = true;
+      lineFrom = anchor;
+      baseDraft = draft.slice();
+      applyLine(lineFrom, p);
+      paint();
+    } else if(lineModeActive(e)){
+      // no anchor yet — this click just plants the starting point
+      draft[p.col] = p.val;
+      anchor = p;
+      paint();
+    } else {
+      isDrawing = true;
+      lastCol = null;
+      stroke(e);
+    }
     e.preventDefault();
   });
+
   drawCanvas.addEventListener('pointermove', function(e){
+    if(lineDrag){
+      draft = baseDraft.slice();
+      var p = pointerToCol(e);
+      applyLine(lineFrom, p);
+      livePoint = p;
+      paint();
+      e.preventDefault();
+      return;
+    }
     if(!isDrawing) return;
     stroke(e);
     e.preventDefault();
   });
-  drawCanvas.addEventListener('pointerup', function(){ isDrawing = false; lastCol = null; });
-  drawCanvas.addEventListener('pointercancel', function(){ isDrawing = false; lastCol = null; });
+
+  function endStroke(e){
+    if(lineDrag){
+      anchor = livePoint || anchor;
+      lineDrag = false;
+      livePoint = null;
+      baseDraft = null;
+      paint();
+    } else if(isDrawing){
+      if(lastCol !== null && draft[lastCol] !== null) anchor = { col: lastCol, val: draft[lastCol] };
+      isDrawing = false;
+      lastCol = null;
+      paint();
+    }
+  }
+  drawCanvas.addEventListener('pointerup', endStroke);
+  drawCanvas.addEventListener('pointercancel', endStroke);
+
+  resDay.addEventListener('click', function(){ switchRes('day'); });
+  resHour.addEventListener('click', function(){ switchRes('hour'); });
+
+  lineBtn.addEventListener('click', function(){
+    lineToggle = !lineToggle;
+    lineBtn.classList.toggle('active', lineToggle);
+    lineBtn.setAttribute('aria-pressed', lineToggle ? 'true' : 'false');
+    drawCanvas.style.cursor = lineToggle ? 'cell' : 'crosshair';
+    paint();
+  });
+
+  function syncResUI(){
+    if(drawRes === 'day'){
+      var first = drawBlocks[0], last = drawBlocks[drawBlocks.length - 1];
+      legStart.textContent = 'Day ' + first.day;
+      legMid.textContent = drawBlocks.length > 2 ? 'Day ' + drawBlocks[Math.floor(drawBlocks.length / 2)].day : '';
+      legEnd.textContent = 'Day ' + last.day;
+      resHint.textContent = 'One bar per day — ' + drawCols + ' day' + (drawCols === 1 ? '' : 's') +
+        '. The hours inside each day get their own natural rise and fall.';
+    } else {
+      legStart.textContent = 'Hour 1';
+      legMid.textContent = 'Hour ' + Math.ceil(drawCols / 2);
+      legEnd.textContent = 'Hour ' + drawCols;
+      resHint.textContent = 'One bar per hour — ' + drawCols + ' hours. Your line becomes the hourly shape directly.';
+    }
+    resDay.classList.toggle('active', drawRes === 'day');
+    resHour.classList.toggle('active', drawRes === 'hour');
+    resDay.disabled = drawBlocks && drawBlocks.length < 2;
+  }
+
+  function switchRes(mode){
+    if(mode === drawRes) return;
+    if(mode === 'day' && drawBlocks.length < 2) return;
+    var filled = fillGaps(draft);
+    drawRes = mode;
+    drawCols = mode === 'day' ? drawBlocks.length : currentHours();
+    draft = filled ? resample(filled, drawCols) : new Array(drawCols).fill(null);
+    anchor = null;
+    syncResUI();
+    sizeCanvas(drawCols);
+    paint();
+  }
 
   function openDraw(){
     clearError();
@@ -1266,17 +1452,20 @@
     if(n === null){
       return showError('Set a valid window first — either two day numbers, or a custom span between 1 and ' + MAX_HOURS + ' hours.');
     }
-    drawCols = n;
-    // carry an existing drawing over, resampled if the span changed
+    drawBlocks = advBlocks() || dayBlocks(n);
+    if(drawBlocks.length < 2) drawRes = 'hour';   // a sub-2-day window has nothing to draw per day
+    drawCols = drawRes === 'day' ? drawBlocks.length : n;
+
+    // carry an existing drawing over, resampled if the span or resolution changed
     if(drawing){
-      draft = resample(drawing, n);
+      draft = resample(drawing.curve, drawCols);
     } else {
       draft = [];
-      for(var i = 0; i < n; i++) draft.push(null);
+      for(var i = 0; i < drawCols; i++) draft.push(null);
     }
-    legStart.textContent = 'Hour 1';
-    legMid.textContent = 'Hour ' + Math.ceil(n / 2);
-    legEnd.textContent = 'Hour ' + n;
+    syncResUI();
+    anchor = null;
+    lineDrag = false;
     drawOverlay.classList.add('on');
     showCropStage(false);   // always land on the drawing step, never mid-crop
     sizeCanvas(n);
@@ -1307,6 +1496,7 @@
   drawClear.addEventListener('click', function(){
     draft = [];
     for(var i = 0; i < drawCols; i++) draft.push(null);
+    anchor = null;
     drawError.style.display = 'none';
     paint();
   });
@@ -1325,8 +1515,8 @@
       drawError.style.display = 'block';
       return;
     }
-    drawing = filled;
-    renderChipMini(drawing);
+    drawing = { res: drawRes, curve: filled };
+    renderChipMini(filled);
     drawChip.classList.add('on');
     closeDraw();
     generate();
@@ -1685,7 +1875,7 @@
   /* Work out each day block's exact total: days the user filled in are locked
      to their number, and whatever's left is spread over the blank days in
      proportion to how many hours each holds. */
-  function resolveDayTotals(blocks, gain, baseDay){
+  function resolveDayTotals(blocks, gain, baseDay, weights){
     var locked = [], blankIdx = [], sumLocked = 0, i;
     for(i = 0; i < blocks.length; i++){
       var d = baseDay + i;
@@ -1697,14 +1887,24 @@
         blankIdx.push(i);
       }
     }
-    if(sumLocked === 0 && blankIdx.length === blocks.length) return null; // nothing set
+    // nothing to go on at all — caller falls back to spreading over the window
+    if(sumLocked === 0 && blankIdx.length === blocks.length && !weights) return null;
     var left = gain - sumLocked;
     if(left < 0) return { error: 'Your per-day view counts add up to ' + fmt(sumLocked) + ', more than the ' + fmt(gain) + ' this window gained. Open Advanced and adjust them.' };
     if(blankIdx.length === 0 && left > 0) return { error: 'Your per-day view counts add up to ' + fmt(sumLocked) + ', but the window gained ' + fmt(gain) + '. Open Advanced and clear a day to absorb the difference.' };
 
     if(blankIdx.length > 0){
-      var w = [];
-      for(i = 0; i < blankIdx.length; i++) w.push(blocks[blankIdx[i]].len);
+      var w = [], any = false;
+      for(i = 0; i < blankIdx.length; i++){
+        var bw = weights ? weights[blankIdx[i]] : null;
+        if(bw !== null && bw !== undefined && bw > 0) any = true;
+        // no drawn weight (or a flat-zero drawing) falls back to hours held
+        w.push(weights ? Math.max(0, bw || 0) : blocks[blankIdx[i]].len);
+      }
+      if(weights && !any){
+        w = [];
+        for(i = 0; i < blankIdx.length; i++) w.push(blocks[blankIdx[i]].len);
+      }
       var share = distribute(w, left);
       for(i = 0; i < blankIdx.length; i++) locked[blankIdx[i]] = share[i];
     }
@@ -1743,16 +1943,16 @@
     var blocks = dayBlocks(hours);
     for(var bi = 0; bi < blocks.length; bi++) blocks[bi].day = dA + bi;
 
-    var dayTotals = null;
-    var resolved = resolveDayTotals(blocks, gain, dA);
+    var dayTotalsBase = null;
+    var resolved = resolveDayTotals(blocks, gain, dA, null);
     if(resolved){
       if(resolved.error) return showError(resolved.error);
-      dayTotals = resolved.totals;
+      dayTotalsBase = resolved.totals;
     }
 
     state = {
       dayA: dA, dayB: dB, viewsA: vA, viewsB: vB, gain: gain, hours: hours,
-      blocks: blocks, dayTotals: dayTotals
+      blocks: blocks, dayTotalsBase: dayTotalsBase
     };
 
     document.getElementById('sGain').textContent = '+' + fmt(gain);

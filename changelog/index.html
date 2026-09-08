@@ -429,6 +429,34 @@
     <h3>VPH Guesser</h3>
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
+        <span class="v">V0.15</span>
+        <span class="d">September 7, 2026</span>
+      </div>
+      <ul>
+        <li>Draw Graph is now one bar per day instead of one per hour. You sketch the day-to-day trend and each day's hourly rise and fall is generated underneath it, so results look like real hourly data instead of a smooth line chopped into 24 pieces.</li>
+        <li>Each drawn day sets that day's exact view total, and the hours inside it are distributed to match — the same mechanism the Advanced per-day counts use.</li>
+        <li>Hours within a day now follow a normal day/night rhythm with a randomised evening peak and noise, giving each day a natural shape rather than a flat slice.</li>
+        <li>Added a Day / Hour toggle for anyone who wants the old hour-by-hour tracing back; switching resolutions resamples an existing drawing instead of discarding it.</li>
+        <li>Windows shorter than two days fall back to hour resolution automatically, since there'd be nothing to draw per day.</li>
+        <li>Canvas labels now read day numbers rather than hour numbers in day mode, and gridlines mark weeks instead of 24-hour blocks.</li>
+        <li>Per-day counts entered in Advanced still take priority over the drawing — locked days keep their real numbers while the drawing shapes the rest.</li>
+      </ul>
+    </div>
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
+        <span class="v">V0.14</span>
+        <span class="d">September 7, 2026</span>
+      </div>
+      <ul>
+        <li>Added straight-line drawing to the Draw Graph window — hold Shift and click to join points with a straight segment instead of sketching freehand, which is far more accurate for flat stretches and clean slopes.</li>
+        <li>Holding Shift and dragging rubber-bands the segment, previewing it live until you let go.</li>
+        <li>Added a Line toggle button for the same behaviour on touch devices, where Shift isn't available.</li>
+        <li>A marker shows where the next straight segment will start from, so chained segments join up cleanly.</li>
+        <li>Freehand and straight segments mix freely — sketch the messy parts and rule the clean ones.</li>
+      </ul>
+    </div>
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
         <span class="v">V0.131</span>
         <span class="d">September 7, 2026</span>
       </div>
