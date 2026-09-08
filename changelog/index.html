@@ -426,6 +426,26 @@
   </div>
 
   <div class="changelog-section">
+    <h3>VPH Guesser</h3>
+    <div class="changelog-entry latest">
+      <div class="changelog-entry-head">
+        <span class="v">V0.1 — Launch</span>
+        <span class="d">September 7, 2026</span>
+      </div>
+      <ul>
+        <li>VPH Guesser is live — enter a video's total views on two different days and it reconstructs five plausible hour-by-hour views-per-hour graphs for the window in between.</li>
+        <li>Every guessed graph is distributed to add up to the exact view gain, using whole views only, so no views are gained or lost to rounding.</li>
+        <li>Five distinct shapes are generated each run: Front-Loaded Burst, Steady Grind, Delayed Spike, Prime-Time Waves, and Late Surge — each with its own randomised curve, day/night rhythm, and noise.</li>
+        <li>Window length defaults to the gap between the two day numbers (2 days = 48 bars), with a Custom Span toggle for any window from 1 hour up to 30 days.</li>
+        <li>Hovering or tapping a bar shows that hour's day and hour number, views for the hour, its share of the total gain, and the running view total at that point.</li>
+        <li>Added a Reroll button that regenerates all five shapes without re-entering the numbers.</li>
+        <li>Summary strip shows total views gained, window length, average VPH, and the equivalent average VP48H.</li>
+        <li>Added a prominent notice that all output is estimated — YouTube does not publish retroactive hourly view data, so the shapes are plausible reconstructions rather than measurements.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="changelog-section">
     <h3>More Tools</h3>
     <p class="changelog-note">Mash Uploads and Extended Studios will each get their own changelog section here once they launch.</p>
   </div>
