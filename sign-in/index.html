@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sign In — BiteSterxBeast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="../favicon.png">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#34D6C4">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0B0D10; --panel:#14171C; --panel-2:#1B1F26; --line:#262B33;
+    --text:#E8EAED; --muted:#8A93A1; --dim:#5A626F;
+    --teal:#34D6C4; --amber:#F2B84B; --red:#E5484D;
+    --blurple:#5865F2;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at 20% -10%, #1a1d24 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    display:flex; flex-direction:column;
+  }
+  a{color:inherit;}
+
+  header{
+    padding:24px 32px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
+  .live-dot{
+    width:9px;height:9px;border-radius:50%;background:var(--teal);
+    box-shadow:0 0 0 0 rgba(52,214,196,0.6); animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(52,214,196,0.55);}
+    70%{box-shadow:0 0 0 9px rgba(52,214,196,0);}
+    100%{box-shadow:0 0 0 0 rgba(52,214,196,0);}
+  }
+  @media (prefers-reduced-motion: reduce){ .live-dot{animation:none;} }
+  header h1{
+    font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;margin:0;
+    letter-spacing:0.02em;
+  }
+  .nav-links{display:flex;gap:22px;font-size:13px;font-weight:600;}
+  .nav-links a{text-decoration:none;color:var(--muted);transition:color .15s;}
+  .nav-links a:hover{color:var(--teal);}
+
+  main{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    padding:48px 24px;
+  }
+  .card{
+    width:100%; max-width:480px;
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:36px 32px;
+  }
+  .eyebrow{
+    display:inline-block;font-size:11px;font-weight:600;letter-spacing:0.08em;
+    text-transform:uppercase;color:var(--teal);background:rgba(52,214,196,0.08);
+    border:1px solid rgba(52,214,196,0.25);padding:6px 12px;border-radius:20px;
+    margin-bottom:18px;
+  }
+  h2{
+    font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;
+    margin:0 0 10px;letter-spacing:-0.01em;
+  }
+  .sub{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 26px;}
+
+  .steps{list-style:none;padding:0;margin:0 0 26px;counter-reset:s;}
+  .steps li{
+    counter-increment:s; position:relative; padding-left:38px;
+    margin-bottom:14px; font-size:14px; line-height:1.55; color:var(--muted);
+  }
+  .steps li::before{
+    content:counter(s);
+    position:absolute; left:0; top:-1px;
+    width:24px;height:24px;border-radius:50%;
+    background:var(--panel-2); border:1px solid var(--line);
+    color:var(--teal); font-size:12px; font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .steps li b{color:var(--text);font-weight:600;}
+  .steps code{
+    background:var(--panel-2); border:1px solid var(--line);
+    padding:2px 7px; border-radius:5px; font-size:13px; color:var(--teal);
+  }
+
+  .discord-btn{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    width:100%; padding:13px; margin-bottom:26px;
+    background:var(--blurple); color:#fff; text-decoration:none;
+    border-radius:10px; font-weight:600; font-size:14px;
+    transition:filter .15s;
+  }
+  .discord-btn:hover{filter:brightness(1.1);}
+
+  .divider{
+    display:flex;align-items:center;gap:14px;
+    color:var(--dim);font-size:11px;font-weight:600;letter-spacing:0.08em;
+    text-transform:uppercase; margin-bottom:22px;
+  }
+  .divider::before,.divider::after{
+    content:"";flex:1;height:1px;background:var(--line);
+  }
+
+  .code-row{display:flex;gap:9px;justify-content:space-between;margin-bottom:18px;}
+  .code-row input{
+    width:100%; aspect-ratio:1/1.15; min-width:0;
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:10px; color:var(--text);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:24px; font-weight:600; text-align:center;
+    text-transform:uppercase; outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .code-row input:focus{
+    border-color:var(--teal);
+    box-shadow:0 0 0 3px rgba(52,214,196,0.14);
+  }
+  .code-row.error input{border-color:var(--red);}
+
+  button.submit{
+    width:100%; padding:13px; border:none; border-radius:10px;
+    background:var(--teal); color:#06201D;
+    font-family:'Inter',sans-serif; font-size:14px; font-weight:700;
+    cursor:pointer; transition:filter .15s;
+  }
+  button.submit:hover:not(:disabled){filter:brightness(1.08);}
+  button.submit:disabled{opacity:.5;cursor:not-allowed;}
+
+  .msg{
+    margin-top:16px; font-size:13px; line-height:1.5;
+    min-height:19px; text-align:center;
+  }
+  .msg.error{color:var(--red);}
+  .msg.ok{color:var(--teal);}
+  .msg.info{color:var(--muted);}
+
+  .foot-note{
+    margin-top:24px; padding-top:20px; border-top:1px solid var(--line);
+    font-size:12px; color:var(--dim); line-height:1.6; text-align:center;
+  }
+  .foot-note a{color:var(--muted);}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="../index.html">
+    <span class="live-dot"></span>
+    <h1>BITESTERXBEAST</h1>
+  </a>
+  <div class="nav-links">
+    <a href="../changelog/">Changelog</a>
+    <a id="navDiscord" href="https://discord.gg/nvAvpsucpa" target="_blank" rel="noopener noreferrer">Discord</a>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+    <span class="eyebrow">Sign In</span>
+    <h2>Verify with Discord</h2>
+    <p class="sub">These tools are for members of the BiteSterxBeast Discord. Verify once and your account stays linked — your saved data follows you on any device.</p>
+
+    <a class="discord-btn" id="inviteBtn" href="https://discord.gg/nvAvpsucpa" target="_blank" rel="noopener noreferrer">
+      Join the Discord
+    </a>
+
+    <ol class="steps">
+      <li>Join the server (button above) — skip if you're already in.</li>
+      <li>Send <code>/verify</code> in any channel. The bot replies with a code only you can see.</li>
+      <li>Type the <b>6-character code</b> below. It expires in 5 minutes.</li>
+    </ol>
+
+    <div class="divider">Enter your code</div>
+
+    <div class="code-row" id="codeRow">
+      <input maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code character 1">
+      <input maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code character 2">
+      <input maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code character 3">
+      <input maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code character 4">
+      <input maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code character 5">
+      <input maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code character 6">
+    </div>
+
+    <button class="submit" id="submitBtn" disabled>Sign In</button>
+    <div class="msg" id="msg"></div>
+
+    <div class="foot-note">
+      We only store your Discord ID, username and avatar. Nothing is posted to your account.<br>
+      <a href="../privacy-terms/">Privacy &amp; Terms</a>
+    </div>
+  </div>
+</main>
+
+<script src="../assets/auth-config.js"></script>
+<script>
+(function(){
+  var CFG = window.BSB_AUTH || {};
+  var inputs = Array.prototype.slice.call(document.querySelectorAll("#codeRow input"));
+  var row = document.getElementById("codeRow");
+  var btn = document.getElementById("submitBtn");
+  var msg = document.getElementById("msg");
+
+  if (CFG.invite) {
+    document.getElementById("inviteBtn").href = CFG.invite;
+    document.getElementById("navDiscord").href = CFG.invite;
+  }
+
+  var params = new URLSearchParams(location.search);
+  var next = params.get("next") || "/";
+  // Only allow same-site redirects.
+  if (!/^\/[^/]/.test(next) && next !== "/") next = "/";
+
+  // Already signed in? Bounce straight through.
+  var existing = null;
+  try { existing = localStorage.getItem("bsb_session"); } catch(e){}
+  if (existing) {
+    fetch(CFG.api + "/me", { headers:{ Authorization:"Bearer " + existing } })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ if (j && j.ok) location.replace(next); })
+      .catch(function(){});
+  }
+
+  function value(){ return inputs.map(function(i){ return i.value; }).join(""); }
+  function refresh(){
+    btn.disabled = value().length !== 6;
+    row.classList.remove("error");
+  }
+
+  inputs.forEach(function(input, idx){
+    input.addEventListener("input", function(){
+      input.value = input.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+      if (input.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+      refresh();
+    });
+    input.addEventListener("keydown", function(e){
+      if (e.key === "Backspace" && !input.value && idx > 0) {
+        inputs[idx - 1].focus();
+        inputs[idx - 1].value = "";
+        refresh();
+        e.preventDefault();
+      }
+      if (e.key === "Enter" && !btn.disabled) submit();
+      if (e.key === "ArrowLeft" && idx > 0) inputs[idx - 1].focus();
+      if (e.key === "ArrowRight" && idx < inputs.length - 1) inputs[idx + 1].focus();
+    });
+    input.addEventListener("paste", function(e){
+      e.preventDefault();
+      var text = (e.clipboardData.getData("text") || "")
+        .replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6);
+      text.split("").forEach(function(ch, i){ if (inputs[i]) inputs[i].value = ch; });
+      var last = Math.min(text.length, 5);
+      inputs[last].focus();
+      refresh();
+    });
+  });
+
+  inputs[0].focus();
+  btn.addEventListener("click", submit);
+
+  function show(text, cls){
+    msg.textContent = text;
+    msg.className = "msg " + (cls || "info");
+  }
+
+  function submit(){
+    var code = value();
+    if (code.length !== 6) return;
+    btn.disabled = true;
+    show("Checking code…", "info");
+
+    fetch(CFG.api + "/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code })
+    })
+    .then(function(r){ return r.json().then(function(j){ return { status:r.status, body:j }; }); })
+    .then(function(res){
+      if (res.status === 200 && res.body.token) {
+        try {
+          localStorage.setItem("bsb_session", res.body.token);
+          localStorage.setItem("bsb_session_checked", String(Date.now()));
+        } catch(e){}
+        show("Signed in as " + res.body.user.username + " — redirecting…", "ok");
+        setTimeout(function(){ location.replace(next); }, 700);
+        return;
+      }
+      row.classList.add("error");
+      btn.disabled = false;
+      if (res.body.error === "not_in_guild") {
+        show("You're no longer in the Discord server. Rejoin and run /verify again.", "error");
+      } else if (res.body.error === "invalid_or_expired") {
+        show("That code is wrong or expired. Run /verify again for a new one.", "error");
+      } else {
+        show("Couldn't sign you in. Try /verify again.", "error");
+      }
+    })
+    .catch(function(){
+      btn.disabled = false;
+      row.classList.add("error");
+      show("Can't reach the sign-in server. Check your connection and retry.", "error");
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

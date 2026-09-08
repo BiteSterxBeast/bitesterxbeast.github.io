@@ -1,0 +1,15 @@
+name = "bsb-auth"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+GUILD_ID = "YOUR_DISCORD_SERVER_ID"
+ALLOWED_ORIGIN = "https://bitesterxbeast.github.io"
+DISCORD_PUBLIC_KEY = "YOUR_DISCORD_APP_PUBLIC_KEY"
+
+# DISCORD_BOT_TOKEN is a secret — do NOT put it here.
+#   npx wrangler secret put DISCORD_BOT_TOKEN
+
+[[kv_namespaces]]
+binding = "AUTH_KV"
+id = "YOUR_KV_NAMESPACE_ID"

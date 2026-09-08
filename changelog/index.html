@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="/assets/auth-config.js"></script>
+<script src="/assets/auth-gate.js"></script>
+
 <meta charset="UTF-8">
 <title>Changelog — BiteSterxBeast</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -162,6 +165,21 @@
   <div class="changelog-section">
     <h3>BiteSterxBeast.github.io</h3>
     <div class="changelog-entry latest">
+      <div class="changelog-entry-head">
+        <span class="v">V0.110</span>
+        <span class="d">September 7, 2026</span>
+      </div>
+      <ul>
+        <li>Added Discord sign-in. The site now requires a linked Discord account, verified through the BiteSterxBeast server — no passwords, no email, nothing to remember.</li>
+        <li>How it works: join the Discord, run <code>/verify</code> in any channel, and the bot replies with a private 6-character code. Enter that code on the new <b>Sign In</b> page and your Discord account is linked to the site.</li>
+        <li>Codes are single-use and expire after 5 minutes. Server membership is re-checked at the moment you redeem, so a code from someone who has since left the server won't work.</li>
+        <li>Sessions last 30 days. Your signed-in username and avatar appear in the header — click it to sign out.</li>
+        <li>Saved data now lives on the account instead of the browser, so it follows you across devices rather than disappearing when you clear your cache.</li>
+        <li>Runs on a Cloudflare Worker with the bot on Discord's HTTP interactions endpoint — no always-on server, no hosting cost.</li>
+        <li><b>Note:</b> the page gate is client-side. It keeps the tools behind sign-in for visitors, but the page files themselves are still public on GitHub. The genuine protection is on saved data, which the server will not hand over without a valid session.</li>
+      </ul>
+    </div>
+    <div class="changelog-entry">
       <div class="changelog-entry-head">
         <span class="v">Site Update</span>
         <span class="d">August 11, 2026</span>
