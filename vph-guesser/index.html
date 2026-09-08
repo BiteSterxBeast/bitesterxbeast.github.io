@@ -455,7 +455,7 @@
 <main>
   <a class="back-link" href="../index.html">← Back to home</a>
   <div class="page-head">
-    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.16</span>
+    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.161</span>
     <h2>VPH Guesser</h2>
     <p>You know the view count on two different days — but not what happened in between. Drop in both numbers and this builds five plausible hour-by-hour shapes the views-per-hour graph could have taken — or draw the curve you actually saw and get five reads on that instead. Know the totals for individual days too? Advanced locks each of those days to its real number. Every guess adds up to your exact view gain.</p>
   </div>
@@ -1300,6 +1300,14 @@
     return w;
   }
 
+  /* Where a column sits horizontally. Bars occupy a slot so they're drawn at
+     slot centres; a line graph's first and last points belong on the very
+     edges, matching how analytics line charts are drawn. */
+  function colToX(c, w, cw){
+    if(drawStyle === 'line') return drawCols > 1 ? (c / (drawCols - 1)) * w : w / 2;
+    return (c + 0.5) * cw;
+  }
+
   function paint(){
     var w = parseFloat(drawCanvas.style.width);
     var h = 200;
@@ -1353,7 +1361,7 @@
       for(c = 0; c <= drawCols; c++){
         var has = c < drawCols && draft[c] !== null;
         if(has){
-          run.push({ x: (c + 0.5) * cw, y: h - Math.max(1, draft[c] * (h - 6)) });
+          run.push({ x: colToX(c, w, cw), y: h - Math.max(1, draft[c] * (h - 6)) });
           continue;
         }
         if(run.length){
@@ -1412,7 +1420,7 @@
 
     // marker showing where the next straight line would start from
     if(anchor && (lineToggle || lineDrag)){
-      var ax = (anchor.col + 0.5) * cw;
+      var ax = colToX(anchor.col, w, cw);
       var ay = h - Math.max(1, anchor.val * (h - 6));
       ctx.beginPath();
       ctx.arc(ax, ay, 4, 0, Math.PI * 2);
@@ -1450,7 +1458,13 @@
     var r = drawCanvas.getBoundingClientRect();
     var x = e.clientX - r.left;
     var y = e.clientY - r.top;
-    var col = Math.floor(x / (r.width / drawCols));
+    var col;
+    if(drawStyle === 'line' && drawCols > 1){
+      // nearest point, since points sit on the edges rather than in slots
+      col = Math.round((x / r.width) * (drawCols - 1));
+    } else {
+      col = Math.floor(x / (r.width / drawCols));
+    }
     col = Math.max(0, Math.min(drawCols - 1, col));
     var val = 1 - (y / r.height);
     return { col: col, val: Math.max(0, Math.min(1, val)) };

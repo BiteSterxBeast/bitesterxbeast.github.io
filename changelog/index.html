@@ -429,6 +429,18 @@
     <h3>VPH Guesser</h3>
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
+        <span class="v">V0.161</span>
+        <span class="d">September 7, 2026</span>
+      </div>
+      <ul>
+        <li>Fixed the drawn line stopping short of the left and right edges of the canvas. Points were plotted at column centres, leaving half a column of margin at each end, which made tracing over an imported screenshot line up incorrectly.</li>
+        <li>In Line view the first and last points now sit on the very edges, matching how analytics line charts are drawn, so a traced curve aligns with the image underneath it.</li>
+        <li>Fixed clicking in Line view landing on the wrong point — pointer hit-testing now snaps to the nearest plotted point instead of assuming the old column slots, so clicking on a point selects that exact point.</li>
+        <li>Bar view is unchanged and still draws bars in their own slots.</li>
+      </ul>
+    </div>
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
         <span class="v">V0.16</span>
         <span class="d">September 7, 2026</span>
       </div>
