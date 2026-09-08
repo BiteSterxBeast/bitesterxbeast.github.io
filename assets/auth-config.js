@@ -2,7 +2,7 @@
    The ONLY file you need to edit after deploying the Worker. */
 window.BSB_AUTH = {
   // Paste your deployed Cloudflare Worker URL here (no trailing slash).
-  api: "https://bsb-auth.YOUR-SUBDOMAIN.workers.dev",
+  api: "bsb-auth.bitesterxbeastbusiness.workers.dev",
 
   // Your Discord server invite.
   invite: "https://discord.gg/nvAvpsucpa",
