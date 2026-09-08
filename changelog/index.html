@@ -429,6 +429,20 @@
     <h3>VPH Guesser</h3>
     <div class="changelog-entry latest">
       <div class="changelog-entry-head">
+        <span class="v">V0.16</span>
+        <span class="d">September 7, 2026</span>
+      </div>
+      <ul>
+        <li>Click any result graph to magnify it, centred on the hour you clicked. Three steps of zoom are available, each halving the visible range.</li>
+        <li>Right-click steps back out one level at a time, and the browser's own context menu is suppressed over a graph so it doesn't get in the way.</li>
+        <li>Bar heights rescale to the tallest bar in view while zoomed, so magnifying a quiet stretch actually reveals its detail instead of showing a row of stubs. Tooltips always report the real numbers.</li>
+        <li>Axis labels update to the visible hour range, and a reset button appears once zoomed — which also covers touch, where there's no right-click.</li>
+        <li>Each of the five graphs zooms independently, so one can be inspected closely while the others stay in full view for comparison.</li>
+        <li>Zooming is clamped at both ends of the window, so magnifying near hour one or the final hour never scrolls past the edge.</li>
+      </ul>
+    </div>
+    <div class="changelog-entry">
+      <div class="changelog-entry-head">
         <span class="v">V0.151</span>
         <span class="d">September 7, 2026</span>
       </div>

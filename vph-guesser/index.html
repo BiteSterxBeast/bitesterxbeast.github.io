@@ -399,6 +399,12 @@
   .chart.hovering .bar{ opacity:0.4; }
   .chart .bar.hot{ opacity:1; filter:brightness(1.3); }
   .chart.dense .bar{ border-radius:0; }
+  .chart{ cursor:zoom-in; }
+  .zoom-lbl{
+    color:var(--teal); cursor:pointer; font-weight:600;
+    border-bottom:1px dotted rgba(52,214,196,0.5);
+  }
+  .zoom-lbl:hover{ color:#4be2d1; }
   .day-tick{
     flex:0 0 1px; align-self:stretch; background:var(--line); min-width:1px; opacity:0.55;
   }
@@ -449,7 +455,7 @@
 <main>
   <a class="back-link" href="../index.html">← Back to home</a>
   <div class="page-head">
-    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.151</span>
+    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.16</span>
     <h2>VPH Guesser</h2>
     <p>You know the view count on two different days — but not what happened in between. Drop in both numbers and this builds five plausible hour-by-hour shapes the views-per-hour graph could have taken — or draw the curve you actually saw and get five reads on that instead. Know the totals for individual days too? Advanced locks each of those days to its real number. Every guess adds up to your exact view gain.</p>
   </div>
@@ -535,7 +541,7 @@
     <div class="results" id="results">
       <div class="results-head">
         <h3 id="resultsTitle">Five possible shapes</h3>
-        <span class="span-note">Hover or tap a bar for that hour's numbers.</span>
+        <span class="span-note">Hover for an hour's numbers. Click to magnify (3 steps), right-click to zoom back out.</span>
       </div>
       <div id="cards"></div>
     </div>
@@ -995,6 +1001,59 @@
     return 'Day ' + dayNum + ' · hour ' + hourOfDay;
   }
 
+  var ZOOM_MAX = 3;
+
+  /* Redraw a chart's bars for whatever slice is currently in view. Heights are
+     scaled to the tallest bar in view so zooming into a quiet stretch actually
+     shows its detail; the tooltip always reports the real numbers. */
+  function paintChart(chart){
+    var d = chart.__vph, v = chart.__view, i;
+    var peak = 0;
+    for(i = v.start; i < v.start + v.len; i++) if(d.series[i] > peak) peak = d.series[i];
+
+    chart.className = 'chart' + (v.len > 120 ? ' dense' : '');
+    chart.style.gap = v.len > 120 ? '0px' : (v.len > 72 ? '1px' : '2px');
+    chart.innerHTML = '';
+    for(i = v.start; i < v.start + v.len; i++){
+      var bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = Math.max(2, peak > 0 ? (d.series[i] / peak) * 100 : 0) + '%';
+      chart.appendChild(bar);
+    }
+
+    var mid;
+    if(v.zoom === 0){
+      mid = '<span>Hour ' + Math.ceil(d.n / 2) + '</span>';
+    } else {
+      mid = '<span class="zoom-lbl" role="button" tabindex="0">&times;' +
+            Math.pow(2, v.zoom) + ' · reset</span>';
+    }
+    d.axis.innerHTML = '<span>Hour ' + (v.start + 1) + '</span>' + mid +
+                       '<span>Hour ' + (v.start + v.len) + '</span>';
+    hotBar = null;
+  }
+
+  function setZoom(chart, level, centreIdx){
+    var d = chart.__vph, v = chart.__view;
+    level = Math.max(0, Math.min(ZOOM_MAX, level));
+    var len = level === 0 ? d.n : Math.max(4, Math.ceil(d.n / Math.pow(2, level)));
+    if(len >= d.n){ len = d.n; level = 0; }
+    var start = Math.round(centreIdx - len / 2);
+    start = Math.max(0, Math.min(d.n - len, start));
+    chart.__view = { zoom: level, start: start, len: len };
+    paintChart(chart);
+  }
+
+  /* Which hour is under the cursor, accounting for the current zoom. */
+  function idxAt(chart, clientX){
+    var d = chart.__vph, v = chart.__view;
+    var r = chart.getBoundingClientRect();
+    if(r.width <= 0) return null;
+    var f = (clientX - r.left) / r.width;
+    var i = v.start + Math.floor(f * v.len);
+    return Math.max(0, Math.min(d.n - 1, i));
+  }
+
   function buildCard(shape, index, series, fromDaily){
     var n = series.length;
     var peakVal = 0, peakIdx = 0, i;
@@ -1044,22 +1103,20 @@
     for(i = 0; i < n; i++){
       running += series[i];
       runningTotals.push(running);
-      var bar = document.createElement('div');
-      bar.className = 'bar';
-      var pct = peakVal > 0 ? (series[i] / peakVal) * 100 : 0;
-      bar.style.height = Math.max(2, pct) + '%';
-      chart.appendChild(bar);
     }
-    // hovering is resolved from cursor position, so it still works when a bar
-    // is under a pixel wide on long windows
-    chart.__vph = { series: series, running: runningTotals, n: n };
+
     scroll.appendChild(chart);
     card.appendChild(scroll);
 
     var axis = document.createElement('div');
     axis.className = 'chart-axis';
-    axis.innerHTML = '<span>Hour 1</span><span>Hour ' + Math.ceil(n / 2) + '</span><span>Hour ' + n + '</span>';
     card.appendChild(axis);
+
+    // hovering and zooming are resolved from cursor position, so they still
+    // work when a bar is under a pixel wide on long windows
+    chart.__vph = { series: series, running: runningTotals, n: n, axis: axis };
+    chart.__view = { zoom: 0, start: 0, len: n };
+    paintChart(chart);
 
     return card;
   }
@@ -1129,14 +1186,10 @@
   function hoverChart(chart, clientX, clientY){
     var d = chart.__vph;
     if(!d) return clearHot();
-    var r = chart.getBoundingClientRect();
-    if(r.width <= 0) return clearHot();
-    var f = (clientX - r.left) / r.width;
-    var i = Math.floor(f * d.n);
-    if(i < 0) i = 0;
-    if(i > d.n - 1) i = d.n - 1;
+    var i = idxAt(chart, clientX);
+    if(i === null) return clearHot();
 
-    var bar = chart.children[i];
+    var bar = chart.children[i - chart.__view.start];
     if(bar !== hotBar){
       if(hotBar) hotBar.classList.remove('hot');
       if(hotChart && hotChart !== chart) hotChart.classList.remove('hovering');
@@ -1177,6 +1230,33 @@
   }, { passive:true });
   document.addEventListener('scroll', clearHot, true);
   window.addEventListener('resize', clearHot);
+
+  /* Click to magnify (up to 3 steps), right-click to step back out. */
+  cards.addEventListener('click', function(e){
+    if(e.target.classList && e.target.classList.contains('zoom-lbl')){
+      var host = e.target.closest('.guess-card').querySelector('.chart');
+      if(host) setZoom(host, 0, host.__vph.n / 2);
+      clearHot();
+      return;
+    }
+    var chart = chartFrom(e.target);
+    if(!chart) return;
+    var i = idxAt(chart, e.clientX);
+    if(i === null) return;
+    if(chart.__view.zoom >= ZOOM_MAX) return;
+    setZoom(chart, chart.__view.zoom + 1, i);
+    hoverChart(chart, e.clientX, e.clientY);
+  });
+
+  cards.addEventListener('contextmenu', function(e){
+    var chart = chartFrom(e.target);
+    if(!chart) return;
+    e.preventDefault();
+    if(chart.__view.zoom === 0) return;
+    var centre = chart.__view.start + chart.__view.len / 2;
+    setZoom(chart, chart.__view.zoom - 1, centre);
+    hoverChart(chart, e.clientX, e.clientY);
+  });
 
   /* ---------- draw graph ---------- */
   var ctx = drawCanvas.getContext('2d');
