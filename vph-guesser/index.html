@@ -198,6 +198,65 @@
   .draw-chip.adv b{ color:var(--teal); }
   .draw-chip.adv button:hover{ border-color:var(--teal); color:var(--teal); }
 
+  /* ---------- trace image ---------- */
+  .bg-bar{
+    display:none; align-items:center; gap:12px; flex-wrap:wrap;
+    margin-bottom:10px; padding:9px 12px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:9px;
+    font-size:12px; color:var(--muted);
+  }
+  .bg-bar.on{ display:flex; }
+  .bg-bar input[type="range"]{ accent-color:var(--teal); width:120px; }
+  .bg-bar button{
+    background:none; border:1px solid var(--line); color:var(--muted); border-radius:6px;
+    font-size:11.5px; font-weight:600; padding:5px 10px; cursor:pointer;
+    font-family:'Inter',sans-serif; transition:border-color .15s, color .15s;
+  }
+  .bg-bar button:hover{ border-color:var(--live); color:var(--live); }
+  .bg-bar .spacer{ flex:1; }
+
+  .crop-stage{ display:none; }
+  .crop-stage.on{ display:block; }
+  .crop-area{
+    position:relative; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:11px; padding:12px; text-align:center; overflow:hidden;
+    user-select:none; touch-action:none;
+  }
+  .crop-area img{
+    max-width:100%; max-height:46vh; display:block; margin:0 auto;
+    border-radius:6px; cursor:crosshair; -webkit-user-drag:none;
+  }
+  .crop-shade{
+    position:absolute; background:rgba(5,7,10,0.62); pointer-events:none;
+  }
+  .crop-sel{
+    position:absolute; border:2px solid var(--teal); pointer-events:none;
+    box-shadow:0 0 0 1px rgba(5,7,10,0.6) inset; display:none;
+  }
+  .crop-sel.on{ display:block; }
+  .crop-sel:before, .crop-sel:after{
+    content:''; position:absolute; background:var(--teal);
+  }
+  .crop-guide{
+    display:flex; gap:16px; align-items:center; flex-wrap:wrap;
+    margin-top:14px; padding:14px 16px;
+    background:rgba(52,214,196,0.05); border:1px solid rgba(52,214,196,0.22);
+    border-radius:11px;
+  }
+  .crop-guide .gexample{ flex:0 0 auto; max-width:100%; }
+  .crop-guide .gexample img{
+    display:block; width:260px; max-width:100%; border-radius:7px;
+    border:1.6px dashed rgba(242,184,75,0.65);
+  }
+  .crop-guide .glabel{
+    display:block; margin-top:6px; font-size:10.5px; letter-spacing:0.05em;
+    text-transform:uppercase; font-weight:600; color:var(--amber);
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .crop-guide .gtext{ font-size:12.5px; color:var(--muted); line-height:1.65; flex:1; min-width:220px; }
+  .crop-guide .gtext b{ color:var(--teal); font-weight:600; }
+  .crop-guide .gtext .bad{ color:var(--amber); font-weight:600; }
+
   /* ---------- advanced day grid ---------- */
   .day-grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(168px, 1fr)); gap:9px;
@@ -367,7 +426,7 @@
 <main>
   <a class="back-link" href="../index.html">← Back to home</a>
   <div class="page-head">
-    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.12</span>
+    <span class="eyebrow">Free Tool · No Sign-In</span><span class="ver-chip">V0.131</span>
     <h2>VPH Guesser</h2>
     <p>You know the view count on two different days — but not what happened in between. Drop in both numbers and this builds five plausible hour-by-hour shapes the views-per-hour graph could have taken — or draw the curve you actually saw and get five reads on that instead. Know the totals for individual days too? Advanced locks each of those days to its real number. Every guess adds up to your exact view gain.</p>
   </div>
@@ -468,23 +527,71 @@
 <div class="overlay" id="drawOverlay">
   <div class="modal">
     <h3>Draw the graph you saw</h3>
-    <p class="modal-sub">Drag across the box to trace the shape of the graph from your analytics — height is relative, so don't worry about exact numbers. The tool scales whatever you draw so the hours still add up to your real view gain, then builds variations around it. Anything you leave untouched gets filled in by joining the nearest points you did draw.</p>
-    <div class="canvas-wrap">
-      <canvas id="drawCanvas" width="800" height="200"></canvas>
-      <div class="canvas-legend">
-        <span id="legStart">Hour 1</span>
-        <span id="legMid">Hour 24</span>
-        <span id="legEnd">Hour 48</span>
+    <p class="modal-sub">Drag across the box to trace the shape of the graph from your analytics, or hit Trace Image to load a screenshot and draw straight over the top of it — height is relative, so don't worry about exact numbers. The tool scales whatever you draw so the hours still add up to your real view gain, then builds variations around it. Anything you leave untouched gets filled in by joining the nearest points you did draw.</p>
+    <div id="drawStage">
+      <div class="bg-bar" id="bgBar">
+        <span>Tracing image</span>
+        <label style="display:flex; align-items:center; gap:7px;">
+          Fade
+          <input type="range" id="bgOpacity" min="10" max="100" value="55">
+        </label>
+        <span class="spacer"></span>
+        <button id="bgRemove">Remove image</button>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="drawCanvas" width="800" height="200"></canvas>
+        <div class="canvas-legend">
+          <span id="legStart">Hour 1</span>
+          <span id="legMid">Hour 24</span>
+          <span id="legEnd">Hour 48</span>
+        </div>
+      </div>
+      <div class="draw-error" id="drawError"></div>
+      <div class="modal-actions">
+        <span class="modal-hint" id="drawHint">Drag left to right. Draw over a section again to correct it.</span>
+        <span class="spacer"></span>
+        <button class="btn-ghost" id="traceBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15l5-4 4 3 4-5 5 4"/></svg>
+          Trace Image
+        </button>
+        <button class="btn-ghost" id="drawClear">Clear</button>
+        <button class="btn-ghost" id="drawCancel">Cancel</button>
+        <button class="btn-primary" id="drawApply">Use This Shape</button>
       </div>
     </div>
-    <div class="draw-error" id="drawError"></div>
-    <div class="modal-actions">
-      <span class="modal-hint" id="drawHint">Drag left to right. Draw over a section again to correct it.</span>
-      <span class="spacer"></span>
-      <button class="btn-ghost" id="drawClear">Clear</button>
-      <button class="btn-ghost" id="drawCancel">Cancel</button>
-      <button class="btn-primary" id="drawApply">Use This Shape</button>
+
+    <div class="crop-stage" id="cropStage">
+      <div class="crop-area" id="cropArea">
+        <img id="cropImg" alt="Screenshot to crop">
+        <div class="crop-shade" id="shadeTop"></div>
+        <div class="crop-shade" id="shadeBottom"></div>
+        <div class="crop-shade" id="shadeLeft"></div>
+        <div class="crop-shade" id="shadeRight"></div>
+        <div class="crop-sel" id="cropSel"></div>
+      </div>
+
+      <div class="crop-guide">
+        <div class="gexample">
+          <img src="crop-example.png" alt="Example of a correctly cropped analytics graph">
+          <span class="glabel">A good crop</span>
+        </div>
+        <div class="gtext">
+          <b>Crop to the plotted area only</b> — like the example. Box in just the region the line moves through: left edge of the plot to the right edge, and from the top of the tallest peak's headroom straight down to the zero baseline.<br>
+          <span class="bad">Leave out</span> the axis numbers, the day labels underneath, the chart title, and any legend. Extra margin on the sides shifts the shape sideways; extra above or below squashes it.
+        </div>
+      </div>
+
+      <div class="draw-error" id="cropError"></div>
+      <div class="modal-actions">
+        <span class="modal-hint">Drag a box on the image. Drag again to redo it.</span>
+        <span class="spacer"></span>
+        <button class="btn-ghost" id="cropFull">Use whole image</button>
+        <button class="btn-ghost" id="cropCancel">Cancel</button>
+        <button class="btn-primary" id="cropApply">Use This Crop</button>
+      </div>
     </div>
+
+    <input type="file" id="traceFile" accept="image/*" style="display:none">
   </div>
 </div>
 
@@ -1004,6 +1111,8 @@
   var drawCols = 48;
   var isDrawing = false;
   var lastCol = null;
+  var bgImage = null;     // cropped screenshot used as a tracing guide
+  var bgAlpha = 0.55;
 
   function currentHours(){
     var h;
@@ -1035,6 +1144,14 @@
     var cw = w / drawCols;
     ctx.clearRect(0, 0, w, h);
 
+    // traced screenshot sits underneath everything, stretched to the full box
+    if(bgImage){
+      ctx.save();
+      ctx.globalAlpha = bgAlpha;
+      ctx.drawImage(bgImage, 0, 0, w, h);
+      ctx.restore();
+    }
+
     // grid: keep roughly 24 lines however long the window is
     var step = 6;
     var steps = [6, 12, 24, 48, 72, 168, 336];
@@ -1042,6 +1159,8 @@
       step = steps[si];
       if(drawCols / step <= 24) break;
     }
+    ctx.save();
+    if(bgImage) ctx.globalAlpha = 0.35;
     for(var i = 0; i <= drawCols; i++){
       if(i % step !== 0) continue;
       ctx.strokeStyle = (i % 24 === 0) ? '#3A414C' : '#232830';
@@ -1058,6 +1177,7 @@
       ctx.lineTo(w, Math.round(h * y / 4) + 0.5);
       ctx.stroke();
     }
+    ctx.restore();
 
     // drawn bars
     for(var c = 0; c < drawCols; c++){
@@ -1068,7 +1188,10 @@
       grad.addColorStop(1, 'rgba(242,184,75,0.35)');
       ctx.fillStyle = grad;
       var pad = cw > 4 ? 0.6 : 0;
+      ctx.save();
+      if(bgImage) ctx.globalAlpha = 0.82;
       ctx.fillRect(c * cw + pad, h - bh, Math.max(0.8, cw - pad * 2), bh);
+      ctx.restore();
     }
   }
 
@@ -1155,6 +1278,7 @@
     legMid.textContent = 'Hour ' + Math.ceil(n / 2);
     legEnd.textContent = 'Hour ' + n;
     drawOverlay.classList.add('on');
+    showCropStage(false);   // always land on the drawing step, never mid-crop
     sizeCanvas(n);
     paint();
   }
@@ -1212,6 +1336,190 @@
     drawing = null;
     drawChip.classList.remove('on');
     if(state) { clearError(); generate(); }
+  });
+
+  /* ---------- trace image ---------- */
+  var traceBtn = document.getElementById('traceBtn');
+  var traceFile = document.getElementById('traceFile');
+  var drawStage = document.getElementById('drawStage');
+  var cropStage = document.getElementById('cropStage');
+  var cropArea = document.getElementById('cropArea');
+  var cropImg = document.getElementById('cropImg');
+  var cropSel = document.getElementById('cropSel');
+  var cropError = document.getElementById('cropError');
+  var cropApply = document.getElementById('cropApply');
+  var cropCancel = document.getElementById('cropCancel');
+  var cropFull = document.getElementById('cropFull');
+  var bgBar = document.getElementById('bgBar');
+  var bgOpacity = document.getElementById('bgOpacity');
+  var bgRemove = document.getElementById('bgRemove');
+  var shades = {
+    top: document.getElementById('shadeTop'),
+    bottom: document.getElementById('shadeBottom'),
+    left: document.getElementById('shadeLeft'),
+    right: document.getElementById('shadeRight')
+  };
+
+  var loadedImg = null;      // the full uploaded image
+  var sel = null;            // { x, y, w, h } in displayed-image pixels
+  var selDragging = false;
+  var selAnchor = null;
+
+  function imgRect(){
+    var ir = cropImg.getBoundingClientRect();
+    var ar = cropArea.getBoundingClientRect();
+    return { left: ir.left - ar.left, top: ir.top - ar.top, width: ir.width, height: ir.height };
+  }
+
+  function paintSel(){
+    var r = imgRect();
+    if(!sel || sel.w < 2 || sel.h < 2){
+      cropSel.classList.remove('on');
+      for(var k in shades) shades[k].style.display = 'none';
+      return;
+    }
+    cropSel.classList.add('on');
+    var x = r.left + sel.x, y = r.top + sel.y;
+    cropSel.style.left = x + 'px';
+    cropSel.style.top = y + 'px';
+    cropSel.style.width = sel.w + 'px';
+    cropSel.style.height = sel.h + 'px';
+
+    // dim everything outside the selection
+    shades.top.style.cssText = 'display:block;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + sel.y + 'px;';
+    shades.bottom.style.cssText = 'display:block;left:' + r.left + 'px;top:' + (y + sel.h) + 'px;width:' + r.width + 'px;height:' + Math.max(0, r.height - sel.y - sel.h) + 'px;';
+    shades.left.style.cssText = 'display:block;left:' + r.left + 'px;top:' + y + 'px;width:' + sel.x + 'px;height:' + sel.h + 'px;';
+    shades.right.style.cssText = 'display:block;left:' + (x + sel.w) + 'px;top:' + y + 'px;width:' + Math.max(0, r.width - sel.x - sel.w) + 'px;height:' + sel.h + 'px;';
+  }
+
+  function localPoint(e){
+    var r = imgRect(), ar = cropArea.getBoundingClientRect();
+    var x = e.clientX - ar.left - r.left;
+    var y = e.clientY - ar.top - r.top;
+    return {
+      x: Math.max(0, Math.min(r.width, x)),
+      y: Math.max(0, Math.min(r.height, y))
+    };
+  }
+
+  cropArea.addEventListener('pointerdown', function(e){
+    if(!loadedImg) return;
+    selDragging = true;
+    cropArea.setPointerCapture(e.pointerId);
+    selAnchor = localPoint(e);
+    sel = { x: selAnchor.x, y: selAnchor.y, w: 0, h: 0 };
+    cropError.style.display = 'none';
+    paintSel();
+    e.preventDefault();
+  });
+  cropArea.addEventListener('pointermove', function(e){
+    if(!selDragging) return;
+    var p = localPoint(e);
+    sel = {
+      x: Math.min(selAnchor.x, p.x),
+      y: Math.min(selAnchor.y, p.y),
+      w: Math.abs(p.x - selAnchor.x),
+      h: Math.abs(p.y - selAnchor.y)
+    };
+    paintSel();
+    e.preventDefault();
+  });
+  cropArea.addEventListener('pointerup', function(){ selDragging = false; });
+  cropArea.addEventListener('pointercancel', function(){ selDragging = false; });
+
+  function showCropStage(on){
+    cropStage.classList.toggle('on', on);
+    drawStage.style.display = on ? 'none' : 'block';
+  }
+
+  traceBtn.addEventListener('click', function(){ traceFile.click(); });
+
+  traceFile.addEventListener('change', function(){
+    var file = traceFile.files && traceFile.files[0];
+    traceFile.value = '';   // so picking the same file twice still fires
+    if(!file) return;
+    if(!/^image\//.test(file.type)){
+      drawError.textContent = 'That doesn\u2019t look like an image file.';
+      drawError.style.display = 'block';
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var img = new Image();
+      img.onload = function(){
+        loadedImg = img;
+        cropImg.src = img.src;
+        sel = null;
+        cropError.style.display = 'none';
+        drawError.style.display = 'none';
+        showCropStage(true);
+        setTimeout(paintSel, 30);
+      };
+      img.onerror = function(){
+        drawError.textContent = 'That image couldn\u2019t be opened — try a PNG or JPG screenshot.';
+        drawError.style.display = 'block';
+      };
+      img.src = ev.target.result;
+    };
+    reader.onerror = function(){
+      drawError.textContent = 'Couldn\u2019t read that file.';
+      drawError.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  /* Turn the selection into the canvas background. Nothing leaves the browser —
+     the image is read locally and never uploaded. */
+  function commitCrop(useFull){
+    if(!loadedImg) return;
+    var r = imgRect();
+    var scaleX = loadedImg.naturalWidth / r.width;
+    var scaleY = loadedImg.naturalHeight / r.height;
+    var sx, sy, sw, sh;
+
+    if(useFull){
+      sx = 0; sy = 0; sw = loadedImg.naturalWidth; sh = loadedImg.naturalHeight;
+    } else {
+      if(!sel || sel.w < 8 || sel.h < 8){
+        cropError.textContent = 'Drag a box around the plotted area first, or use the whole image.';
+        cropError.style.display = 'block';
+        return;
+      }
+      sx = sel.x * scaleX; sy = sel.y * scaleY;
+      sw = sel.w * scaleX; sh = sel.h * scaleY;
+    }
+
+    var off = document.createElement('canvas');
+    off.width = Math.max(1, Math.round(sw));
+    off.height = Math.max(1, Math.round(sh));
+    off.getContext('2d').drawImage(loadedImg, sx, sy, sw, sh, 0, 0, off.width, off.height);
+
+    bgImage = off;
+    bgBar.classList.add('on');
+    showCropStage(false);
+    sizeCanvas(drawCols);
+    paint();
+  }
+
+  cropApply.addEventListener('click', function(){ commitCrop(false); });
+  cropFull.addEventListener('click', function(){ commitCrop(true); });
+  cropCancel.addEventListener('click', function(){
+    showCropStage(false);
+    if(!bgImage) loadedImg = null;
+  });
+
+  bgOpacity.addEventListener('input', function(){
+    bgAlpha = parseInt(bgOpacity.value, 10) / 100;
+    paint();
+  });
+  bgRemove.addEventListener('click', function(){
+    bgImage = null; loadedImg = null; sel = null;
+    bgBar.classList.remove('on');
+    paint();
+  });
+
+  window.addEventListener('resize', function(){
+    if(cropStage.classList.contains('on')) paintSel();
   });
 
   /* ---------- advanced: per-day view counts ---------- */
