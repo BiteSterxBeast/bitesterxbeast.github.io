@@ -134,7 +134,7 @@ function renderCompetitors(){
          let showRight = false;
 
          if (ch.vidView === 'best') {
-           targetVid = d.bestVideo || d.newestVideo;
+           targetVid = d.bestVideo || null;
            headerTitle = '🔥 Best Performing (7d)';
            showRight = true;
          } else {
@@ -164,7 +164,7 @@ function renderCompetitors(){
          } else {
            contentHtml = `
              <div style="flex:1; display:flex; align-items:center; justify-content:center; color:var(--muted); text-align:center;">
-               No video found for this category.
+               ${ch.vidView === 'best' ? 'No uploads in the last 7 days.' : 'No video found for this category.'}
              </div>
            `;
          }
