@@ -89,6 +89,11 @@
   }
   .bar-fill.over{ background:linear-gradient(90deg, var(--amber), #f7cd7a); }
   .percent{ font-size:13.5px; color:var(--muted); margin:0; font-weight:600; }
+  .reward{
+    margin:24px 0 0; padding-top:20px; border-top:1px solid var(--line);
+    font-size:14px; color:var(--muted); font-weight:500;
+  }
+  .reward strong{ color:var(--text); font-weight:600; }
 </style>
 </head>
 <body>
@@ -107,6 +112,7 @@
     <p class="amounts" id="amountsText">$0 <span class="of">of</span> <span class="goal-num" id="goalText">$0</span></p>
     <div class="bar-outer"><div class="bar-fill" id="barFill"></div></div>
     <p class="percent" id="percentText">0%</p>
+    <p class="reward" id="rewardText">Reward: <strong id="rewardName">—</strong></p>
   </div>
 </main>
 
@@ -130,6 +136,10 @@
   document.getElementById('barFill').style.width = displayPct + '%';
   document.getElementById('barFill').className = 'bar-fill' + (pct > 100 ? ' over' : '');
   document.getElementById('percentText').textContent = Math.round(pct) + '%';
+
+  var reward = (typeof REWARD_NAME === 'string' && REWARD_NAME.trim()) ? REWARD_NAME.trim() : '';
+  if (reward) document.getElementById('rewardName').textContent = reward;
+  else document.getElementById('rewardText').style.display = 'none';
 })();
 </script>
 
