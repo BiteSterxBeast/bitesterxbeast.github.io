@@ -14,6 +14,7 @@ var REWARD_NAME = "Roblox Giftcard";   // reward name shown at the bottom ("Rewa
 //   date:   "YYYY-MM-DD HH:MM" (24-hour time, e.g. 16:30 = 4:30 PM)
 // ============================================
 var HISTORY = [
+     { amount: 3,  level: "for bsb 2 revised.gmd", date: "2026-8-14 02:52" },
   // { amount: 3,  level: "Example Level", date: "2026-10-07 16:30" },
   // { amount: -1, level: "Example Level", date: "2026-10-07 18:05" },
 ];
