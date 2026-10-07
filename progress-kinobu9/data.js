@@ -3,7 +3,7 @@
 // Save the file, commit, and push. That's it.
 // ============================================
 
-var CURRENT_AMOUNT = 9;   // how much has been made so far
+var CURRENT_AMOUNT = 12;   // how much has been made so far
 var GOAL_AMOUNT = 25;     // the target goal
 var REWARD_NAME = "Roblox Giftcard";   // reward name shown at the bottom ("Reward: ...")
 
@@ -15,6 +15,9 @@ var REWARD_NAME = "Roblox Giftcard";   // reward name shown at the bottom ("Rewa
 // ============================================
 var HISTORY = [
      { amount: 3,  level: "for bsb 2 revised.gmd", date: "2026-8-14 02:52" },
+     { amount: 3,  level: "Bart simpson sgvebvh", date: "2026-8-15 17:24" },
+     { amount: 3,  level: "leveldvdv.gmd", date: "2026-8-20 16:02" },
+     { amount: 3,  level: "prefabpt1platverity.gmd", date: "2026-10-06 21:54" },
   // { amount: 3,  level: "Example Level", date: "2026-10-07 16:30" },
   // { amount: -1, level: "Example Level", date: "2026-10-07 18:05" },
 ];
