@@ -94,6 +94,26 @@
     font-size:14px; color:var(--muted); font-weight:500;
   }
   .reward strong{ color:var(--text); font-weight:600; }
+
+  .history{ margin-top:36px; }
+  .history h2{
+    font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--muted);
+    margin:0 0 14px 4px;
+  }
+  .history-list{ display:flex; flex-direction:column; gap:10px; }
+  .bubble{
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:16px 16px 16px 4px; padding:14px 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+  }
+  .bubble .level{ font-weight:600; font-size:15px; color:var(--text); margin:0 0 4px; word-break:break-word; }
+  .bubble .when{ font-size:12px; color:var(--dim); margin:0; }
+  .bubble .amt{ font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; white-space:nowrap; }
+  .bubble.pos .amt{ color:#4ADE80; }
+  .bubble.neg{ border-color:rgba(248,113,113,0.3); }
+  .bubble.neg .amt{ color:#F87171; }
+  .history-empty{ font-size:13.5px; color:var(--dim); text-align:center; margin:0; }
 </style>
 </head>
 <body>
@@ -114,6 +134,11 @@
     <p class="percent" id="percentText">0%</p>
     <p class="reward" id="rewardText">Reward: <strong id="rewardName">—</strong></p>
   </div>
+
+  <section class="history" id="historySection">
+    <h2>History</h2>
+    <div class="history-list" id="historyList"></div>
+  </section>
 </main>
 
 <script>
@@ -140,6 +165,54 @@
   var reward = (typeof REWARD_NAME === 'string' && REWARD_NAME.trim()) ? REWARD_NAME.trim() : '';
   if (reward) document.getElementById('rewardName').textContent = reward;
   else document.getElementById('rewardText').style.display = 'none';
+  // ---- History log ----
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function parseWhen(str){
+    // expects "YYYY-MM-DD HH:MM" (24-hour); returns sortable number + display text
+    var m = String(str || '').trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?$/);
+    if (!m) return { sort: -1, text: String(str || '') };
+    var y=+m[1], mo=+m[2], d=+m[3], h=m[4]?+m[4]:null, mi=m[5]?+m[5]:0;
+    var text = MONTHS[mo-1] + ' ' + d + ', ' + y;
+    if (h !== null) {
+      var ap = h >= 12 ? 'PM' : 'AM', h12 = h % 12 || 12;
+      text += ' \u00b7 ' + h12 + ':' + (mi < 10 ? '0' : '') + mi + ' ' + ap;
+    }
+    return { sort: ((y*100+mo)*100+d)*10000 + (h||0)*100 + mi, text: text };
+  }
+
+  var list = document.getElementById('historyList');
+  var entries = (typeof HISTORY !== 'undefined' && Array.isArray(HISTORY)) ? HISTORY.slice() : [];
+  var rows = entries.map(function(e, i){
+    var w = parseWhen(e && e.date);
+    return { e: e || {}, w: w, i: i };
+  });
+  // newest first; ties keep reverse file order
+  rows.sort(function(a, b){ return (b.w.sort - a.w.sort) || (b.i - a.i); });
+
+  if (!rows.length) {
+    var empty = document.createElement('p');
+    empty.className = 'history-empty';
+    empty.textContent = 'No history yet.';
+    list.appendChild(empty);
+  }
+  rows.forEach(function(r){
+    var amt = Number(r.e.amount) || 0;
+    var b = document.createElement('div');
+    b.className = 'bubble ' + (amt < 0 ? 'neg' : 'pos');
+
+    var left = document.createElement('div');
+    var lvl = document.createElement('p'); lvl.className = 'level';
+    lvl.textContent = r.e.level || 'Untitled';
+    var when = document.createElement('p'); when.className = 'when';
+    when.textContent = r.w.text;
+    left.appendChild(lvl); left.appendChild(when);
+
+    var a = document.createElement('span'); a.className = 'amt';
+    a.textContent = (amt < 0 ? '-' : '+') + fmt(Math.abs(amt));
+
+    b.appendChild(left); b.appendChild(a);
+    list.appendChild(b);
+  });
 })();
 </script>
 
