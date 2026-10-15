@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bone Blitz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1530;--panel:#1b2550;--panel2:#222e60;--line:#2c3874;
+  --ink:#f6f2e9;--muted:#a3abcf;
+  --bone:#efe5cf;--edge:#b8ab90;--hole:#0f1530;
+  --accent:#ff5a4e;--accent-d:#b8322a;--accent2:#ffc83d;
+  --good:#2fd88f;--bad:#ff5468;
+  --c0:#e8403a;--c1:#2f7de1;--c2:#d99a0c;--c3:#23a057;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{min-height:100vh;color:var(--ink);font-family:Outfit,system-ui,-apple-system,sans-serif;font-size:17px;
+  background:radial-gradient(1100px 520px at 85% -10%,#283372 0,transparent 60%),radial-gradient(800px 400px at -10% 110%,#3a1a3e 0,transparent 60%),var(--bg);background-attachment:fixed}
+button,input{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 40px}
+h1,h2,h3{margin:0}
+.display{font-family:Bungee,Outfit,sans-serif;letter-spacing:.5px;font-weight:400}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.stack{display:flex;flex-direction:column;gap:14px}
+.spacer{flex:1}
+
+/* buttons */
+.btn{border:0;border-radius:14px;padding:14px 20px;font-weight:800;font-size:18px;background:var(--panel2);
+  box-shadow:0 4px 0 #0a0f26;cursor:pointer;transition:transform .06s,box-shadow .06s;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0a0f26}
+.btn.primary{background:var(--accent);box-shadow:0 4px 0 var(--accent-d);color:#fff}
+.btn.primary:active{box-shadow:0 1px 0 var(--accent-d)}
+.btn.yellow{background:var(--accent2);color:#231700;box-shadow:0 4px 0 #a37a0c}
+.btn.ghost{background:transparent;box-shadow:none;border:2px solid var(--line);padding:10px 16px;font-size:16px}
+.btn.small{padding:8px 14px;font-size:15px}
+.btn.big{font-size:22px;padding:18px 28px}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none}
+
+.card{background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:20px;padding:20px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:2px solid var(--line);background:transparent;border-radius:12px;padding:9px 14px;font-weight:600;cursor:pointer}
+.seg button.on{background:var(--accent2);border-color:var(--accent2);color:#231700}
+.setting{display:grid;gap:8px}
+.setting .lbl{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:600}
+.err{background:color-mix(in srgb,var(--bad) 18%,transparent);border:1px solid var(--bad);padding:12px 14px;border-radius:12px}
+
+/* home */
+.logo{display:flex;align-items:center;gap:12px;justify-content:center}
+.logo h1{font-family:Bungee,Outfit,sans-serif;font-weight:400;font-size:clamp(44px,9vw,92px);line-height:.95}
+.logo h1 span{color:var(--accent)}
+.logo svg{width:clamp(36px,7vw,70px);height:auto}
+.home{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:28px;align-items:center;min-height:calc(100vh - 60px)}
+.home .skwrap svg{max-height:82vh}
+.menu{display:grid;gap:14px}
+.menu .btn{justify-content:flex-start;text-align:left;padding:18px 20px;font-size:20px}
+.menu .btn small{display:block;font-weight:600;font-size:14px;opacity:.85;margin-top:2px}
+.menu .ico{font-size:26px;width:36px;text-align:center;flex:none}
+@media (max-width:760px){.home{grid-template-columns:1fr;min-height:0}.home .skwrap{order:2}.home .skwrap svg{max-height:46vh}}
+
+/* skeleton */
+.skwrap{display:flex;justify-content:center}
+.skwrap svg{width:100%;height:auto;max-height:calc(100vh - 190px);display:block}
+.sk line{stroke:var(--bone);stroke-linecap:round}
+.sk .st{fill:none;stroke:var(--bone);stroke-linecap:round}
+.sk circle{fill:var(--bone)}
+.sk .fl{fill:var(--bone);stroke:var(--edge);stroke-width:2;stroke-linejoin:round}
+.sk .hole{fill:var(--hole)}
+.sk .sc{fill:var(--bone);opacity:.42}
+.sk .tooth{stroke:var(--edge);stroke-width:1.2}
+.ptr .pl{stroke:var(--accent2);stroke-width:3.5}
+.ptr .pdot{fill:var(--accent2);stroke:#231700;stroke-width:2}
+.ptr .pring{fill:none;stroke:var(--accent2);stroke-width:3;transform-box:fill-box;transform-origin:center;animation:pulse 1.3s ease-out infinite}
+.ptr .pbox{fill:var(--accent2)}
+.ptr .ptxt{fill:#231700;font-weight:800;font-family:Outfit,system-ui,sans-serif}
+.ptr.good .pl,.ptr.good .pring{stroke:var(--good)}.ptr.good .pdot,.ptr.good .pbox{fill:var(--good)}.ptr.good .ptxt{fill:#04281a}
+.ptr.bad .pl,.ptr.bad .pring{stroke:var(--bad)}.ptr.bad .pdot,.ptr.bad .pbox{fill:var(--bad)}.ptr.bad .ptxt{fill:#fff}
+.sdot{fill:var(--accent);stroke:#fff;stroke-width:2.5;cursor:pointer;opacity:.85}
+.sdot.on{fill:var(--accent2)}
+@keyframes pulse{from{transform:scale(.55);opacity:1}to{transform:scale(1.9);opacity:0}}
+.fade5{animation:fadeAway 5s ease-in forwards}
+@keyframes fadeAway{0%,78%{opacity:1;filter:none}100%{opacity:0;filter:blur(6px)}}
+
+/* game layout */
+.game{display:flex;flex-direction:column;gap:12px;min-height:calc(100vh - 58px)}
+.gtop{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pill{background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-weight:600;font-size:15px}
+.pill.hot{background:var(--accent);border-color:var(--accent);color:#fff}
+.clock{font-family:Bungee,Outfit,sans-serif;font-size:30px;min-width:56px;text-align:right}
+.tbar{height:12px;background:var(--line);border-radius:99px;overflow:hidden}
+.tbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));animation:drain linear forwards}
+@keyframes drain{from{width:100%}to{width:0}}
+.gbody{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:26px;align-items:center;flex:1}
+.gside{display:flex;flex-direction:column;gap:16px}
+.prompt{font-size:clamp(22px,3vw,34px);font-weight:800;line-height:1.15}
+.prompt em{font-style:normal;color:var(--accent2)}
+@media (max-width:760px){
+  .gbody{grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+  .pill{font-size:13px;padding:5px 11px}.btn.small{padding:6px 11px;font-size:14px}.clock{font-size:24px}
+  .ansform input{font-size:19px;padding:14px}
+  .skwrap svg{max-height:44vh}
+  .game{min-height:0}
+}
+
+.ansform{display:flex;gap:10px}
+.ansform input{flex:1;min-width:0;background:#0b1029;border:2px solid var(--line);border-radius:14px;padding:16px;font-size:22px;font-weight:600;outline:none}
+.ansform input:focus{border-color:var(--accent2)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ch{border:0;border-radius:16px;min-height:86px;padding:12px;font-weight:800;font-size:clamp(17px,2.2vw,24px);color:#fff;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;box-shadow:0 5px 0 rgba(0,0,0,.35)}
+.ch:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.ch span{font-family:Bungee,Outfit,sans-serif;font-weight:400;background:rgba(0,0,0,.22);border-radius:10px;width:36px;height:36px;display:grid;place-items:center;flex:none;font-size:18px}
+.ch.c0{background:var(--c0)}.ch.c1{background:var(--c1)}.ch.c2{background:var(--c2)}.ch.c3{background:var(--c3)}
+.ch.right{outline:5px solid var(--good)}.ch.dim{opacity:.35}
+
+.bigmsg{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;min-height:62vh;padding:20px}
+.bigmsg h2{font-family:Bungee,Outfit,sans-serif;font-weight:400;font-size:clamp(34px,6vw,64px);line-height:1}
+.bigmsg p{font-size:clamp(18px,2.4vw,24px);margin:0;max-width:640px}
+.bigcount{font-family:Bungee,Outfit,sans-serif;font-size:min(42vw,260px);line-height:1;color:var(--accent2);animation:pop .4s}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.good-t{color:var(--good)}.bad-t{color:var(--bad)}.yel-t{color:var(--accent2)}
+.answerbig{font-family:Bungee,Outfit,sans-serif;font-size:clamp(30px,5vw,56px);color:var(--accent2);line-height:1}
+
+/* lobby */
+.lobby{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.lobby{grid-template-columns:1fr}}
+.code{font-family:Bungee,Outfit,sans-serif;font-size:clamp(56px,11vw,128px);letter-spacing:8px;color:var(--accent2);line-height:1}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--panel2);border:1px solid var(--line);padding:8px 14px;border-radius:99px;font-weight:600;animation:pop .3s}
+.formcard{max-width:460px;margin:8vh auto 0;display:grid;gap:14px}
+.formcard input{background:#0b1029;border:2px solid var(--line);border-radius:14px;padding:16px;font-size:22px;font-weight:600;outline:none;width:100%}
+.formcard input:focus{border-color:var(--accent2)}
+.formcard .codein{font-family:Bungee,Outfit,sans-serif;letter-spacing:6px;text-transform:uppercase;text-align:center;font-size:34px}
+
+/* boards */
+.board{display:grid;gap:8px}
+.brow{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;background:var(--panel2);border-radius:12px;padding:10px 14px;font-weight:600}
+.brow .rk{font-family:Bungee,Outfit,sans-serif;color:var(--muted)}
+.brow.me{outline:2px solid var(--accent2)}
+.matches{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.match{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;gap:6px}
+.match.cons{border-style:dashed;opacity:.85}
+.mp{display:flex;align-items:center;gap:8px;font-weight:700}
+.mp .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp.win .nm{color:var(--good)}.mp.lose .nm{opacity:.5;text-decoration:line-through}
+.mp .rw{font-size:12px;background:var(--good);color:#04281a;border-radius:6px;padding:2px 6px}
+.pips{display:flex;gap:4px}.pip{width:12px;height:12px;border-radius:50%;border:2px solid var(--accent2)}.pip.on{background:var(--accent2)}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:10px 0}
+.pod{background:var(--panel2);border-radius:14px 14px 0 0;width:min(200px,28vw);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:12px 8px;gap:4px;text-align:center}
+.pod .pn{font-weight:800;font-size:clamp(16px,2vw,22px);word-break:break-word}
+.pod .pm{font-family:Bungee,Outfit,sans-serif;font-size:clamp(26px,4vw,44px)}
+.pod.p1{height:230px;background:linear-gradient(180deg,#ffc83d,#d99a0c);color:#231700}
+.pod.p2{height:180px}.pod.p3{height:140px}
+.studylist{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;max-height:60vh;overflow:auto;padding-right:4px}
+.studylist button{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;cursor:pointer}
+.studylist button.on{border-color:var(--accent2);background:#3a3420}
+.studylist b{display:block}
+.topbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.topbar .mini{font-family:Bungee,Outfit,sans-serif;font-size:20px}
+.topbar .mini span{color:var(--accent)}
+table.miss{width:100%;border-collapse:collapse}
+table.miss td,table.miss th{padding:10px;border-bottom:1px solid var(--line);text-align:left}
+table.miss th{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+.confetti i{position:absolute;top:-20px;width:10px;height:16px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script>
+/* =====================================================================
+   BONE LIST — edit this to match your class.
+   sci    = the scientific term students must answer
+   common = the everyday name shown on the label
+   alt    = other spellings/forms you'll accept when typing
+   x, y   = where the arrow points on the skeleton (see skeleton coordinates)
+   side   = which side the label box sits on ("left" or "right")
+   ===================================================================== */
+const BONES = [
+  {sci:"Cranium",            common:"Skull",                 alt:[],                                   x:228, y:30,  side:"right"},
+  {sci:"Mandible",           common:"Lower jaw",             alt:[],                                   x:226, y:122, side:"right"},
+  {sci:"Maxilla",            common:"Upper jaw",             alt:["maxillae"],                         x:186, y:104, side:"left"},
+  {sci:"Zygomatic bone",     common:"Cheekbone",             alt:["zygomatic","zygoma"],               x:167, y:88,  side:"left"},
+  {sci:"Cervical vertebrae", common:"Neck bones",            alt:["cervical","cervical vertebra","cervical spine"], x:207, y:160, side:"right"},
+  {sci:"Clavicle",           common:"Collarbone",            alt:[],                                   x:152, y:180, side:"left"},
+  {sci:"Scapula",            common:"Shoulder blade",        alt:[],                                   x:131, y:214, side:"left"},
+  {sci:"Sternum",            common:"Breastbone",            alt:[],                                   x:200, y:236, side:"right"},
+  {sci:"Ribs",               common:"Rib cage",              alt:["rib","costae","costa"],             x:252, y:248, side:"right"},
+  {sci:"Humerus",            common:"Upper arm bone",        alt:[],                                   x:120, y:262, side:"left"},
+  {sci:"Radius",             common:"Forearm bone (thumb side)", alt:[],                               x:94,  y:396, side:"left"},
+  {sci:"Ulna",               common:"Forearm bone (pinky side)", alt:[],                               x:290, y:396, side:"right"},
+  {sci:"Carpals",            common:"Wrist bones",           alt:["carpal","carpus"],                  x:95,  y:467, side:"left"},
+  {sci:"Metacarpals",        common:"Palm bones",            alt:["metacarpal"],                       x:307, y:495, side:"right"},
+  {sci:"Phalanges",          common:"Finger bones",          alt:["phalanx","phalange"],               x:91,  y:530, side:"left"},
+  {sci:"Lumbar vertebrae",   common:"Lower back bones",      alt:["lumbar","lumbar vertebra","lumbar spine"], x:207, y:316, side:"right"},
+  {sci:"Pelvis",             common:"Hip bone",              alt:["os coxae","coxal bone","innominate bone","pelvic girdle"], x:150, y:366, side:"left"},
+  {sci:"Sacrum",             common:"Base of the spine",     alt:[],                                   x:204, y:368, side:"right"},
+  {sci:"Coccyx",             common:"Tailbone",              alt:[],                                   x:200, y:407, side:"left"},
+  {sci:"Femur",              common:"Thigh bone",            alt:[],                                   x:167, y:490, side:"left"},
+  {sci:"Patella",            common:"Kneecap",               alt:[],                                   x:228, y:588, side:"right"},
+  {sci:"Tibia",              common:"Shinbone",              alt:[],                                   x:177, y:665, side:"left"},
+  {sci:"Fibula",             common:"Calf bone",             alt:[],                                   x:240, y:664, side:"right"},
+  {sci:"Tarsals",            common:"Ankle bones",           alt:["tarsal","tarsus"],                  x:171, y:744, side:"left"},
+  {sci:"Metatarsals",        common:"Foot bones",            alt:["metatarsal"],                       x:234, y:765, side:"right"},
+];
+
+/* ===================== timing (seconds) ===================== */
+const SPEED = new URLSearchParams(location.search).has("fast") ? 0.25 : 1; // ?fast is for testing only
+const Q_T = 15*SPEED, SHOW_T = 5*SPEED, COUNT_T = 3*SPEED, REVEAL_T = 5*SPEED, STAGE_T = 6*SPEED, RESULT_T = 5*SPEED;
+const PREFIX = "boneblitz-v1-";
+
+/* ===================== helpers ===================== */
+const app = document.getElementById("app");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length-1; i > 0; i--) { const j = Math.random()*(i+1)|0; [a[i],a[j]] = [a[j],a[i]]; } return a; };
+const norm = s => String(s || "").toLowerCase().replace(/[^a-z]/g, "");
+const rid = () => Math.random().toString(36).slice(2, 10);
+const secs = ms => (ms/1000).toFixed(2) + "s";
+function lev(a, b) {
+  const m = a.length, n = b.length, d = Array.from({length:m+1}, (_, i) => [i]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+    d[i][j] = Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[m][n];
+}
+const targets = b => [b.sci, ...(b.alt || [])].map(norm);
+function distTo(b, n) { return Math.min(...targets(b).map(t => lev(t, n))); }
+/* typed answer check; "forgive" allows a small typo, but never if it's closer to a different bone */
+function checkTyped(bi, input, forgive) {
+  const n = norm(input), b = BONES[bi];
+  if (!n) return false;
+  if (targets(b).includes(n)) return true;
+  if (!forgive) return false;
+  const d = distTo(b, n), longest = Math.max(...targets(b).map(t => t.length));
+  const allowed = longest >= 10 ? 2 : longest >= 5 ? 1 : 0;
+  if (d > allowed) return false;
+  return !BONES.some((o, i) => i !== bi && distTo(o, n) <= d);
+}
+function checkAnswer(bi, v, style, forgive) {
+  return style === "mc" ? norm(v) === norm(BONES[bi].sci) : checkTyped(bi, v, forgive);
+}
+function makeChoices(bi) {
+  const others = shuffle(BONES.map((_, i) => i).filter(i => i !== bi && norm(BONES[i].sci) !== norm(BONES[bi].sci))).slice(0, 3);
+  return shuffle([bi, ...others]).map(i => BONES[i].sci);
+}
+
+/* screen + timers */
+let uiTimers = [];
+function uiLater(fn, ms) { const t = setTimeout(fn, ms); uiTimers.push(t); return t; }
+function view(html) {
+  uiTimers.forEach(clearTimeout); uiTimers = [];
+  app.innerHTML = html;
+  const af = app.querySelector("[autofocus]");
+  if (af) setTimeout(() => af.focus(), 30);
+  window.scrollTo(0, 0);
+}
+/* any element with data-end shows a live seconds countdown */
+setInterval(() => {
+  document.querySelectorAll("[data-end]").forEach(el => {
+    const s = Math.max(0, Math.ceil((+el.dataset.end - Date.now()) / 1000 / SPEED));
+    const txt = s === 0 && el.dataset.zero ? el.dataset.zero : String(s);
+    if (el.textContent !== txt) el.textContent = txt;
+  });
+}, 100);
+const endAt = sec => Date.now() + sec * 1000;
+const clockEl = sec => `<div class="clock" data-end="${endAt(sec)}">${Math.round(sec/SPEED)}</div>`;
+const barEl = sec => `<div class="tbar"><i style="animation-duration:${sec}s"></i></div>`;
+
+/* ===================== skeleton drawing ===================== */
+const SKELETON = (() => {
+  const L = (x1,y1,x2,y2,w) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${w}"/>`;
+  const C = (x,y,r) => `<circle cx="${x}" cy="${y}" r="${r}"/>`;
+  const LB = (x1,y1,x2,y2,w) => L(x1,y1,x2,y2,w) + C(x1,y1,(w*.75).toFixed(1)) + C(x2,y2,(w*.75).toFixed(1));
+  const mirror = s => `<g>${s}</g><g transform="matrix(-1 0 0 1 400 0)">${s}</g>`;
+
+  // back layer: scapula + ribs
+  let back = `<polygon class="sc" points="124,186 150,190 156,252 128,236"/>`;
+  const outer = [156,146,140,136,134,133,134,137,142,150];
+  for (let i = 0; i < 10; i++) {
+    const y = 196 + i*11.5, sx = i < 7 ? 193 : 186 - (i-7)*12, sy = i < 7 ? y : y + 6, ox = outer[i];
+    back += `<path class="st" stroke-width="5" d="M${sx} ${sy} C${sx-28} ${sy-5} ${ox+2} ${y+2} ${ox} ${y+24+i*1.5}"/>`;
+  }
+  // center torso
+  let center = `<rect class="fl" x="191" y="186" width="18" height="18" rx="4"/>
+    <rect class="fl" x="194" y="204" width="12" height="62" rx="4"/>
+    <polygon class="fl" points="196,266 204,266 200,278"/>`;
+  for (let i = 0; i < 5; i++) center += `<rect class="fl" x="189" y="${288+i*13}" width="22" height="10" rx="3"/>`;
+  // front layer: clavicle, pelvis, limbs
+  let front = `<path class="st" stroke-width="7" d="M192 186 Q160 176 128 182"/>`;
+  front += `<path class="fl" d="M196 352 C175 338 146 336 138 360 C132 382 150 398 166 408 C176 415 184 424 194 432 L199 432 L199 418 C188 410 178 400 174 390 C168 376 182 366 196 370 Z"/><ellipse class="hole" cx="181" cy="410" rx="4.5" ry="6.5"/>`;
+  front += LB(128,192,112,328,12);                                    // humerus
+  front += LB(102,340,86,452,6) + LB(118,338,102,455,6);              // radius, ulna
+  front += C(86,464,5)+C(96,462,5)+C(104,466,5)+C(90,473,5)+C(100,473,5); // carpals
+  front += L(82,478,68,500,3.5) + L(66,504,60,521,3);                 // thumb
+  for (let i = 1; i < 5; i++) front += L(82+i*6,480,76+i*8,510,3.5) + L(76+i*8,514,74+i*8.5,545-(i===4?6:0),3);
+  front += C(152,410,8) + LB(163,402,172,575,13);                     // femur
+  front += `<ellipse cx="172" cy="588" rx="9" ry="11" class="fl"/>`;  // patella
+  front += LB(176,600,178,728,11) + LB(158,604,163,724,5);            // tibia, fibula
+  front += C(162,740,6)+C(174,738,6)+C(168,750,6)+C(180,748,5);       // tarsals
+  for (let i = 0; i < 5; i++) front += L(158+i*6,754,150+i*8,776,3) + L(150+i*8,780,148+i*8.5,794,3);
+  // skull + neck + spine base
+  let skull = `<ellipse class="fl" cx="200" cy="62" rx="46" ry="50"/>
+    <ellipse class="hole" cx="182" cy="76" rx="11" ry="9"/><ellipse class="hole" cx="218" cy="76" rx="11" ry="9"/>
+    <path class="hole" d="M200 87 L193 100 L207 100 Z"/>
+    <path class="fl" d="M164 100 Q166 130 186 138 L214 138 Q234 130 236 100 L228 102 Q226 124 212 128 L188 128 Q174 124 172 102 Z"/>
+    <rect class="fl" x="182" y="104" width="36" height="9" rx="2"/>`;
+  for (let i = 1; i < 6; i++) skull += `<line class="tooth" x1="${182+i*6}" y1="104" x2="${182+i*6}" y2="113"/>`;
+  for (let i = 0; i < 5; i++) skull += `<rect class="fl" x="192" y="${142+i*8}" width="16" height="6" rx="2"/>`;
+  const spineBase = `<path class="fl" d="M186 352 L214 352 L208 396 L192 396 Z"/><path class="fl" d="M195 398 L205 398 L201 414 L199 414 Z"/>`;
+  return `<g class="sk">${mirror(back)}${center}${mirror(front)}${spineBase}${skull}</g>`;
+})();
+
+function pointer(i, text, kind = "") {
+  const b = BONES[i], left = b.side === "left";
+  const ly = Math.max(28, Math.min(785, b.y)), W = 210, H = 46, bx = left ? -152 : 342, ex = left ? bx + W : bx;
+  const fs = Math.min(22, Math.floor(300 / Math.max(text.length, 1)));
+  return `<g class="ptr ${kind}"><line class="pl" x1="${ex}" y1="${ly}" x2="${b.x}" y2="${b.y}"/>
+    <circle class="pring" cx="${b.x}" cy="${b.y}" r="15"/><circle class="pdot" cx="${b.x}" cy="${b.y}" r="7"/>
+    <rect class="pbox" x="${bx}" y="${ly-H/2}" width="${W}" height="${H}" rx="12"/>
+    <text class="ptxt" x="${bx+W/2}" y="${ly+fs*.36}" font-size="${fs}" text-anchor="middle">${esc(text)}</text></g>`;
+}
+function skel(o = {}) {
+  let extra = "";
+  if (o.dots) extra += BONES.map((b, i) => `<circle class="sdot${o.sel === i ? " on" : ""}" cx="${b.x}" cy="${b.y}" r="9" data-act="studyPick" data-i="${i}"/>`).join("");
+  if (o.ptr) extra += pointer(o.ptr.i, o.ptr.text, o.ptr.kind);
+  return `<div class="skwrap ${o.cls || ""}"><svg viewBox="-160 0 720 810" role="img" aria-label="Skeleton diagram">${SKELETON}${extra}</svg></div>`;
+}
+
+const LOGO_BOLT = `<svg viewBox="0 0 40 60" aria-hidden="true"><path d="M24 0 L4 34 H18 L12 60 L36 22 H22 Z" fill="#ff5a4e"/></svg>`;
+const topbar = (right = "") => `<div class="topbar"><div class="mini">BONE <span>BLITZ</span></div><div class="spacer"></div>${right}</div>`;
+
+function answerArea(choices, placeholder = "Scientific name…") {
+  if (choices) return `<div class="choices">${choices.map((c, i) => `<button class="ch c${i}" data-act="pick" data-v="${esc(c)}"><span>${"ABCD"[i]}</span>${esc(c)}</button>`).join("")}</div>`;
+  return `<form class="ansform" data-form="ans"><input name="a" placeholder="${placeholder}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus><button class="btn primary">Go</button></form>`;
+}
+function confetti() {
+  const cols = ["#ff5a4e","#ffc83d","#2fd88f","#2f7de1","#efe5cf"];
+  let s = `<div class="confetti">`;
+  for (let i = 0; i < 90; i++) s += `<i style="left:${Math.random()*100}%;background:${cols[i%5]};animation-duration:${2.5+Math.random()*2.5}s;animation-delay:${Math.random()*1.5}s"></i>`;
+  return s + `</div>`;
+}
+
+/* ===================== actions ===================== */
+const ACT = {};
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]");
+  if (el && ACT[el.dataset.act] && !el.disabled) { e.preventDefault(); ACT[el.dataset.act](el); }
+});
+document.addEventListener("submit", e => {
+  const f = e.target.closest("[data-form]");
+  if (f) { e.preventDefault(); FORM[f.dataset.form]?.(f); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.repeat && !e.target.closest("input")) {
+    const b = app.querySelector("[data-enter]"); if (b) { e.preventDefault(); b.click(); }
+  }
+});
+const FORM = {};
+
+/* ===================== HOME ===================== */
+function home() {
+  leaveNet();
+  view(`<div class="home">
+    <div class="stack">
+      <div class="logo">${LOGO_BOLT}<h1>BONE<br><span>BLITZ</span></h1></div>
+      <p class="center muted" style="font-size:20px;margin:0 0 6px">See the bone. Name the bone. Fast.</p>
+      <div class="menu">
+        <button class="btn primary" data-act="goHost"><span class="ico">🖥️</span><span>Host a class game<small>Put this on the projector</small></span></button>
+        <button class="btn yellow" data-act="goJoin"><span class="ico">📱</span><span>Join a game<small>Got a code? Jump in</small></span></button>
+        <button class="btn" data-act="goSolo"><span class="ico">🎯</span><span>Solo practice<small>Drill on your own</small></span></button>
+        <button class="btn ghost" data-act="goStudy"><span class="ico">🦴</span><span>Study the skeleton</span></button>
+      </div>
+    </div>
+    ${skel({ptr:{i:BONES.findIndex(b => norm(b.sci) === "coccyx") >= 0 ? BONES.findIndex(b => norm(b.sci) === "coccyx") : 0, text:"???"}})}
+  </div>`);
+}
+ACT.home = () => home();
+ACT.goSolo = () => soloSetup();
+ACT.goStudy = () => study(null);
+ACT.goHost = () => hostOpen();
+ACT.goJoin = () => joinScreen();
+
+/* ===================== STUDY ===================== */
+function study(sel) {
+  const b = sel != null ? BONES[sel] : null;
+  view(`${topbar(`<button class="btn small ghost" data-act="home">Home</button>`)}
+  <div class="gbody">
+    ${skel({dots:true, sel, ptr: sel != null ? {i:sel, text:b.sci, kind:"good"} : null})}
+    <div class="gside">
+      <div class="prompt">${b ? `<em>${esc(b.sci)}</em><br><span class="muted" style="font-size:.7em">${esc(b.common)}</span>` : "Tap a dot or a name to see where it is."}</div>
+      <div class="studylist">${BONES.map((x, i) => `<button class="${i === sel ? "on" : ""}" data-act="studyPick" data-i="${i}"><b>${esc(x.sci)}</b><span class="muted">${esc(x.common)}</span></button>`).join("")}</div>
+    </div>
+  </div>`);
+}
+ACT.studyPick = el => study(+el.dataset.i);
+
+/* ===================== SOLO ===================== */
+const soloCfg = {style:"type", count:"10", timer:"on", memory:"off", forgive:"on"};
+let SO = null;
+function seg(act, key, val, opts) {
+  return `<div class="seg">${opts.map(([v, label]) => `<button class="${val === v ? "on" : ""}" data-act="${act}" data-k="${key}" data-v="${v}">${label}</button>`).join("")}</div>`;
+}
+function soloSetup() {
+  const c = soloCfg;
+  view(`${topbar(`<button class="btn small ghost" data-act="home">Home</button>`)}
+  <div class="card stack" style="max-width:640px;margin:4vh auto 0">
+    <h2 class="display" style="font-size:34px">Solo practice</h2>
+    <div class="setting"><div class="lbl">Answer style</div>${seg("soloSet","style",c.style,[["type","Type it"],["mc","Multiple choice"]])}</div>
+    <div class="setting"><div class="lbl">Questions</div>${seg("soloSet","count",c.count,[["10","10"],["20","20"],["all",`All ${BONES.length}`]])}</div>
+    <div class="setting"><div class="lbl">15-second timer</div>${seg("soloSet","timer",c.timer,[["on","On"],["off","Off"]])}</div>
+    <div class="setting"><div class="lbl">Memory mode (like Knockout: bone shows 5s, then fades)</div>${seg("soloSet","memory",c.memory,[["off","Off"],["on","On"]])}</div>
+    <div class="setting"><div class="lbl">Forgive small typos</div>${seg("soloSet","forgive",c.forgive,[["on","Yes"],["off","No — exact spelling"]])}</div>
+    <button class="btn primary big" data-act="soloStart" data-enter>Start</button>
+  </div>`);
+}
+ACT.soloSet = el => { soloCfg[el.dataset.k] = el.dataset.v; soloSetup(); };
+ACT.soloStart = () => {
+  const all = shuffle(BONES.map((_, i) => i));
+  const n = soloCfg.count === "all" ? all.length : Math.min(+soloCfg.count, all.length);
+  SO = {cfg:{...soloCfg}, qs:all.slice(0, n), i:0, res:[]};
+  soloQ();
+};
+ACT.soloRetry = () => {
+  const missed = SO.res.filter(r => !r.ok).map(r => r.bi);
+  SO = {cfg:SO.cfg, qs:shuffle(missed), i:0, res:[]};
+  soloQ();
+};
+function soloHead(extra = "") {
+  return `<div class="gtop"><span class="pill">Question ${SO.i+1} / ${SO.qs.length}</span><span class="pill">✔ ${SO.res.filter(r => r.ok).length}</span><div class="spacer"></div>${extra}<button class="btn small ghost" data-act="soloQuit">Quit</button></div>`;
+}
+ACT.soloQuit = () => { SO.qs = SO.qs.slice(0, SO.i); soloEnd(); };
+function soloQ() {
+  if (SO.i >= SO.qs.length) return soloEnd();
+  const bi = SO.qs[SO.i];
+  SO.choices = SO.cfg.style === "mc" ? makeChoices(bi) : null;
+  if (SO.cfg.memory === "on") {
+    view(`<div class="game">${soloHead(clockEl(SHOW_T))}${barEl(SHOW_T)}
+      <div class="gbody">${skel({ptr:{i:bi, text:BONES[bi].common}, cls:"fade5"})}
+      <div class="gside"><div class="prompt">Remember this one: <em>${esc(BONES[bi].common)}</em></div><p class="muted">It fades in a few seconds…</p></div></div></div>`);
+    uiLater(() => {
+      view(`<div class="bigmsg"><div class="bigcount" data-end="${endAt(COUNT_T)}" data-zero="GO">3</div></div>`);
+      uiLater(soloAsk, COUNT_T*1000);
+    }, SHOW_T*1000);
+  } else soloAsk();
+}
+function soloAsk() {
+  const bi = SO.qs[SO.i], timed = SO.cfg.timer === "on", mem = SO.cfg.memory === "on";
+  SO.t0 = performance.now(); SO.locked = false;
+  const head = soloHead(timed ? clockEl(Q_T) : "") + (timed ? barEl(Q_T) : "");
+  if (mem) {
+    view(`<div class="game">${head}<div class="stack" style="max-width:720px;margin:4vh auto 0;width:100%">
+      <div class="prompt center">What was the scientific name?</div>${answerArea(SO.choices)}</div></div>`);
+  } else {
+    view(`<div class="game">${head}<div class="gbody">${skel({ptr:{i:bi, text:BONES[bi].common}})}
+      <div class="gside"><div class="prompt">What's the scientific name for the <em>${esc(BONES[bi].common.toLowerCase())}</em>?</div>${answerArea(SO.choices)}</div></div></div>`);
+  }
+  if (timed) uiLater(() => soloSubmit(""), Q_T*1000);
+}
+function soloSubmit(v) {
+  if (!SO || SO.locked) return;
+  SO.locked = true;
+  const bi = SO.qs[SO.i], ms = performance.now() - SO.t0;
+  const ok = checkAnswer(bi, v, SO.cfg.style, SO.cfg.forgive === "on");
+  SO.res.push({bi, v, ok, ms});
+  const b = BONES[bi];
+  view(`<div class="game">${soloHead()}<div class="gbody">${skel({ptr:{i:bi, text:b.sci, kind: ok ? "good" : "bad"}})}
+    <div class="gside">
+      <h2 class="display ${ok ? "good-t" : "bad-t"}" style="font-size:44px">${ok ? "Correct!" : v ? "Not quite" : "Time's up"}</h2>
+      <div><div class="muted">${esc(b.common)} =</div><div class="answerbig">${esc(b.sci)}</div></div>
+      ${!ok && v ? `<div class="muted">You said: <b style="color:var(--ink)">${esc(v)}</b></div>` : ""}
+      ${ok ? `<div class="muted">Answered in ${secs(ms)}</div>` : ""}
+      <button class="btn primary big" data-act="soloNext" data-enter autofocus>${SO.i+1 < SO.qs.length ? "Next" : "See results"}</button>
+    </div></div></div>`);
+}
+ACT.soloNext = () => { SO.i++; soloQ(); };
+ACT.pick = el => {
+  const v = el.dataset.v;
+  if (SO && app.querySelector(".game") && !NET.role) return soloSubmit(v);
+  playerSubmit(v);
+};
+FORM.ans = f => {
+  const v = f.a.value.trim();
+  if (!v) return;
+  if (SO && !NET.role) return soloSubmit(v);
+  playerSubmit(v);
+};
+function soloEnd() {
+  const res = SO.res, right = res.filter(r => r.ok), miss = res.filter(r => !r.ok);
+  const avg = right.length ? right.reduce((s, r) => s + r.ms, 0) / right.length : 0;
+  const pct = res.length ? Math.round(right.length / res.length * 100) : 0;
+  view(`${topbar(`<button class="btn small ghost" data-act="home">Home</button>`)}
+  <div class="card stack" style="max-width:760px;margin:2vh auto 0">
+    <div class="center"><div class="display" style="font-size:clamp(54px,10vw,96px);color:${pct >= 80 ? "var(--good)" : pct >= 50 ? "var(--accent2)" : "var(--bad)"}">${right.length}/${res.length}</div>
+    <div class="muted">${pct}% correct${right.length ? ` · average ${secs(avg)} on correct answers` : ""}</div></div>
+    ${miss.length ? `<div><h3 style="margin-bottom:8px">Review these</h3><table class="miss"><tr><th>Bone</th><th>Answer</th><th>You said</th></tr>
+      ${miss.map(r => `<tr><td>${esc(BONES[r.bi].common)}</td><td><b class="yel-t">${esc(BONES[r.bi].sci)}</b></td><td class="muted">${esc(r.v || "—")}</td></tr>`).join("")}</table></div>`
+      : res.length ? `<p class="center good-t" style="font-size:22px;font-weight:800">Perfect run! 🔥</p>` : ""}
+    <div class="row" style="justify-content:center">
+      ${miss.length ? `<button class="btn primary" data-act="soloRetry">Retry missed (${miss.length})</button>` : ""}
+      <button class="btn yellow" data-act="soloStart" data-enter>Play again</button>
+      <button class="btn ghost" data-act="goSolo">Settings</button>
+    </div>
+  </div>`);
+}
+
+/* ===================== NETWORK (shared) ===================== */
+const NET = {role:null, peer:null};
+function leaveNet() {
+  clearGame();
+  if (NET.peer) { try { NET.peer.destroy(); } catch (e) {} }
+  NET.role = null; NET.peer = null; H = null; P = null;
+}
+function peerReady() { return typeof Peer !== "undefined"; }
+function netError(msg) {
+  view(`${topbar(`<button class="btn small ghost" data-act="home">Home</button>`)}
+  <div class="bigmsg"><h2>Can't connect</h2><p>${msg}</p><button class="btn primary" data-act="home">Back home</button></div>`);
+}
+const NO_LIB = "The multiplayer library didn't load. Check the internet connection — some school networks block it. Solo practice still works.";
+
+/* ===================== HOST ===================== */
+let H = null;
+let gameTimers = [];
+function gLater(fn, ms) { const t = setTimeout(fn, ms); gameTimers.push(t); return t; }
+function clearGame() { gameTimers.forEach(clearTimeout); gameTimers = []; }
+function makeCode() { const A = "ABCDEFGHJKMNPQRTUVWXYZ2346789"; let s = ""; for (let i = 0; i < 5; i++) s += A[Math.random()*A.length|0]; return s; }
+
+function hostOpen(tries = 0) {
+  leaveNet();
+  if (!peerReady()) return netError(NO_LIB);
+  view(`<div class="bigmsg"><h2>Opening room…</h2></div>`);
+  const code = makeCode();
+  const peer = new Peer(PREFIX + code, {debug:0});
+  NET.role = "host"; NET.peer = peer;
+  H = {code, peer, players:new Map(), settings:{mode:"timed", style:"type", count:"10", forgive:"on"}, game:null};
+  peer.on("open", () => hostLobby());
+  peer.on("connection", conn => {
+    conn.on("data", d => hostMsg(conn, d));
+    conn.on("close", () => hostDrop(conn.peer));
+    conn.on("error", () => {});
+  });
+  peer.on("disconnected", () => { try { peer.reconnect(); } catch (e) {} });
+  peer.on("error", e => {
+    if (e.type === "unavailable-id" && tries < 3) return hostOpen(tries + 1);
+    if (e.type === "peer-unavailable") return;
+    if (H && H.peer === peer && !H.game) netError("Couldn't open a room (" + esc(e.type) + "). Try again in a moment.");
+  });
+}
+function send(p, obj) { try { if (p && p.conn && p.conn.open) p.conn.send(obj); } catch (e) {} }
+function vsend(p, obj) { send(p, {t:"view", ...obj}); }
+function lobbyBroadcast() {
+  for (const p of H.players.values()) vsend(p, {phase:"lobby", name:p.name, count:H.players.size});
+}
+function hostMsg(conn, d) {
+  if (!H || !d || typeof d !== "object") return;
+  if (d.t === "join") {
+    let name = String(d.name || "").replace(/\s+/g, " ").trim().slice(0, 16) || "Player";
+    const taken = new Set([...H.players.values()].map(p => p.name.toLowerCase()));
+    let n = 2, base = name; while (taken.has(name.toLowerCase())) name = (base.slice(0, 13) + " " + n++);
+    const p = {id:conn.peer, name, conn};
+    H.players.set(p.id, p);
+    if (H.game && H.game.phase !== "end") {
+      vsend(p, {phase:"msg", title:"Game in progress", text:"Hang tight — you'll be in the next game."});
+    } else lobbyBroadcast();
+    if (!H.game) hostLobby(); else if (H.game.phase === "end") hostView();
+    return;
+  }
+  const p = H.players.get(conn.peer);
+  if (d.t === "ans" && p) hostAnswer(p, d);
+}
+function hostDrop(id) {
+  if (!H || !H.players.has(id)) return;
+  H.players.delete(id);
+  if (!H.game) { hostLobby(); lobbyBroadcast(); return; }
+  const g = H.game;
+  if (g.phase === "q" || g.phase === "answer") maybeAllAnswered();
+  const cnt = document.getElementById("ansCount"); if (cnt) cnt.textContent = answeredText();
+}
+const SET = () => H.settings;
+function hostLobby() {
+  if (!H) return;
+  const s = H.settings, n = H.players.size, need = s.mode === "ko" ? 2 : 1;
+  const url = location.protocol.startsWith("http") ? location.host + location.pathname.replace(/index\.html$/, "") : "this page";
+  view(`${topbar(`<button class="btn small ghost" data-act="closeRoom">Close room</button>`)}
+  <div class="lobby">
+    <div class="card stack">
+      <div class="muted" style="font-weight:600">Go to <b style="color:var(--ink)">${esc(url)}</b> → <b style="color:var(--ink)">Join a game</b> → enter:</div>
+      <div class="code">${H.code}</div>
+      <div class="row"><h3>Players</h3><span class="pill">${n}</span></div>
+      <div class="chips">${n ? [...H.players.values()].map(p => `<span class="chip">${esc(p.name)}</span>`).join("") : `<span class="muted">Waiting for players to join…</span>`}</div>
+    </div>
+    <div class="card stack">
+      <div class="setting"><div class="lbl">Game mode</div>${seg("hostSet","mode",s.mode,[["timed","⏱ Timed race"],["ko","🥊 Knockout"]])}</div>
+      <p class="muted" style="margin:0;font-size:15px">${s.mode === "timed"
+        ? "Everyone answers the same bone, 15s each. Wrong or blank = 15s. Lowest total time wins."
+        : "1v1 battles, best of 3. Bone shows 5s, fades, 3-2-1, then 15s to answer. Winners face winners until one champion is left; knocked-out players keep battling each other."}</p>
+      <div class="setting"><div class="lbl">Answer style</div>${seg("hostSet","style",s.style,[["type","Type it"],["mc","Multiple choice"]])}</div>
+      ${s.mode === "timed" ? `<div class="setting"><div class="lbl">Questions</div>${seg("hostSet","count",s.count,[["10","10"],["15","15"],["20","20"]])}</div>` : ""}
+      ${s.style === "type" ? `<div class="setting"><div class="lbl">Forgive small typos</div>${seg("hostSet","forgive",s.forgive,[["on","Yes"],["off","No — exact spelling"]])}</div>` : ""}
+      <button class="btn primary big" data-act="hostStart" ${n < need ? "disabled" : ""}>Start game</button>
+      ${n < need ? `<div class="muted center" style="font-size:14px">Need at least ${need} player${need > 1 ? "s" : ""}</div>` : ""}
+    </div>
+  </div>`);
+}
+ACT.hostSet = el => { H.settings[el.dataset.k] = el.dataset.v; hostLobby(); };
+ACT.closeRoom = () => home();
+ACT.hostStart = () => {
+  if (!H) return;
+  if (H.settings.mode === "ko") koStart(); else tStart();
+};
+ACT.hostEnd = () => { clearGame(); H.game = null; hostLobby(); lobbyBroadcast(); };
+ACT.hostNext = () => {
+  if (!H || !H.game) return;
+  clearGame();
+  if (H.game.type === "timed") tNext();
+};
+const live = id => H.players.has(id);
+const nameOf = id => (H.game && H.game.names[id]) || H.players.get(id)?.name || "Player";
+function eachGP(fn) { for (const id of H.game.ids) { const p = H.players.get(id); if (p) fn(p, id); } }
+function hostAnswer(p, d) {
+  const g = H.game; if (!g) return;
+  const okPhase = g.type === "timed" ? g.phase === "q" : g.phase === "answer";
+  if (!okPhase || d.qid !== g.qid || g.ans[p.id] || !g.ids.includes(p.id)) return;
+  if (g.type === "ko") { const m = matchOf(p.id); if (!m || m.done) return; }
+  const ms = Math.max(0, Math.min(Q_T*1000, Number(d.ms) || Q_T*1000));
+  g.ans[p.id] = {v:String(d.v || "").slice(0, 60), ms, ok:checkAnswer(g.bi, d.v, SET().style, SET().forgive === "on")};
+  const cnt = document.getElementById("ansCount"); if (cnt) cnt.textContent = answeredText();
+  maybeAllAnswered();
+}
+function answeringIds() {
+  const g = H.game;
+  if (g.type === "timed") return g.ids.filter(live);
+  return g.matches.filter(m => !m.done).flatMap(m => m.ids).filter(live);
+}
+function answeredText() { const ids = answeringIds(); return `${ids.filter(id => H.game.ans[id]).length} / ${ids.length} answered`; }
+function maybeAllAnswered() {
+  const g = H.game, ids = answeringIds();
+  if (!ids.length || ids.every(id => g.ans[id])) {
+    clearGame();
+    gLater(() => g.type === "timed" ? tReveal() : koReveal(), 400);
+  }
+}
+function hostTop(left) {
+  return `<div class="gtop">${left}<div class="spacer"></div><span class="pill">Code ${H.code}</span><button class="btn small ghost" data-act="hostEnd">End game</button></div>`;
+}
+
+/* ---------- Timed race ---------- */
+function tStart() {
+  const ids = [...H.players.keys()];
+  const n = Math.min(+H.settings.count, BONES.length);
+  H.game = {type:"timed", ids, names:Object.fromEntries(ids.map(id => [id, nameOf(id)])), qs:shuffle(BONES.map((_, i) => i)).slice(0, n), i:-1, stats:{}, phase:"q", ans:{}};
+  ids.forEach(id => H.game.stats[id] = {total:0, correct:0});
+  tNext();
+}
+function tRanking() {
+  const g = H.game;
+  return g.ids.filter(live).sort((a, b) => g.stats[a].total - g.stats[b].total || g.stats[b].correct - g.stats[a].correct);
+}
+function tNext() {
+  const g = H.game; g.i++;
+  if (g.i >= g.qs.length) return tEnd();
+  g.bi = g.qs[g.i]; g.qid = rid(); g.ans = {}; g.phase = "q";
+  g.choices = SET().style === "mc" ? makeChoices(g.bi) : null;
+  g.end = endAt(Q_T);
+  eachGP(p => vsend(p, {phase:"tq", qid:g.qid, idx:g.i, total:g.qs.length, bi:g.bi, choices:g.choices, dur:Q_T}));
+  hostView();
+  gLater(tReveal, Q_T*1000 + 800);
+}
+function tReveal() {
+  const g = H.game; if (g.phase !== "q") return;
+  clearGame(); g.phase = "r";
+  for (const id of g.ids) {
+    const a = g.ans[id], ok = !!(a && a.ok), add = ok ? a.ms : Q_T*1000, st = g.stats[id];
+    st.total += add; if (ok) st.correct++;
+    st.last = {ok, ms:add};
+  }
+  const rank = tRanking();
+  eachGP((p, id) => vsend(p, {phase:"treveal", ok:g.stats[id].last.ok, ms:g.stats[id].last.ms, answer:BONES[g.bi].sci, bi:g.bi,
+    total:g.stats[id].total, rank:rank.indexOf(id) + 1, of:rank.length, last:g.i === g.qs.length - 1}));
+  hostView();
+  gLater(tNext, REVEAL_T*1000 + 1500);
+}
+function tEnd() {
+  const g = H.game; g.phase = "end";
+  const rank = tRanking();
+  eachGP((p, id) => vsend(p, {phase:"end", place:rank.indexOf(id) + 1, of:rank.length,
+    line:`${g.stats[id].correct}/${g.qs.length} correct · ${secs(g.stats[id].total)} total`}));
+  hostView();
+}
+
+/* ---------- Knockout ---------- */
+function groups(ids) {
+  ids = shuffle(ids);
+  const gs = [];
+  for (let i = 0; i + 1 < ids.length; i += 2) gs.push([ids[i], ids[i+1]]);
+  if (ids.length % 2 === 1) {
+    const last = ids[ids.length - 1];
+    if (gs.length) gs[gs.length - 1].push(last); else return {gs:[], rest:[last]};
+  }
+  return {gs, rest:[]};
+}
+function mkMatch(ids, cons) { return {ids, cons, wins:Object.fromEntries(ids.map(i => [i, 0])), time:Object.fromEntries(ids.map(i => [i, 0])), rounds:0, done:false, winner:null, last:null}; }
+function matchOf(id) { return H.game.matches.find(m => m.ids.includes(id)); }
+function koStart() {
+  const ids = [...H.players.keys()];
+  H.game = {type:"ko", ids, names:Object.fromEntries(ids.map(id => [id, nameOf(id)])), alive:shuffle(ids), out:[], elimGroups:[], stage:0, used:[], matches:[], resting:[], phase:"stage", ans:{}};
+  koStage();
+}
+function scoreFor(m, id) { return [id, ...m.ids.filter(x => x !== id)].map(x => m.wins[x]).join("–"); }
+function koInfo(id) {
+  const g = H.game, m = matchOf(id);
+  if (!m) return {spectator:true, vs:"", note:"Sitting this one out"};
+  return {spectator:m.done, cons:m.cons, vs:m.ids.filter(x => x !== id).map(nameOf).join(" & "), score:scoreFor(m, id), round:g.round};
+}
+function koSendAll(fn) { eachGP((p, id) => vsend(p, fn(id))); }
+function koStage() {
+  const g = H.game;
+  g.alive = g.alive.filter(live); g.out = g.out.filter(live);
+  if (g.alive.length <= 1) return koEnd();
+  g.stage++; g.round = 0;
+  const A = groups(g.alive), B = groups(g.out);
+  g.matches = [...A.gs.map(ids => mkMatch(ids, false)), ...B.gs.map(ids => mkMatch(ids, true))];
+  g.resting = B.rest;
+  g.phase = "stage";
+  const finalStage = g.alive.length <= 3;
+  koSendAll(id => {
+    const m = matchOf(id);
+    if (!m) return {phase:"ko_stage", title:"Taking a breather", text:"No one left to battle this stage — you're back in next stage."};
+    const vs = m.ids.filter(x => x !== id).map(nameOf).join(" & ");
+    return m.cons
+      ? {phase:"ko_stage", title:"Bonus battle", text:`You vs <b>${esc(vs)}</b>. Knocked-out players keep battling!`}
+      : {phase:"ko_stage", title: finalStage ? "FINAL BATTLE" : `Stage ${g.stage}`, text:`You vs <b>${esc(vs)}</b>. Win 2 of 3 rounds to advance.`, hot:true};
+  });
+  hostView();
+  gLater(koRound, STAGE_T*1000);
+}
+function koRound() {
+  const g = H.game;
+  if (!g.matches.some(m => !m.cons && !m.done)) return koStageEnd();
+  g.round++;
+  if (g.used.length >= BONES.length) g.used = [];
+  const pool = BONES.map((_, i) => i).filter(i => !g.used.includes(i));
+  g.bi = pool[Math.random()*pool.length|0]; g.used.push(g.bi);
+  g.choices = SET().style === "mc" ? makeChoices(g.bi) : null;
+  g.ans = {}; g.qid = rid(); g.phase = "show";
+  koSendAll(id => ({phase:"ko_show", bi:g.bi, dur:SHOW_T, ...koInfo(id)}));
+  hostView();
+  gLater(() => {
+    g.phase = "count";
+    koSendAll(() => ({phase:"ko_count", dur:COUNT_T}));
+    hostView();
+    gLater(() => {
+      g.phase = "answer"; g.end = endAt(Q_T);
+      koSendAll(id => ({phase:"ko_answer", qid:g.qid, choices:g.choices, dur:Q_T, ...koInfo(id)}));
+      hostView();
+      gLater(koReveal, Q_T*1000 + 800);
+    }, COUNT_T*1000);
+  }, SHOW_T*1000);
+}
+function decide(m) {
+  const order = m.ids.slice().sort((a, b) => (live(b) - live(a)) || (m.wins[b] - m.wins[a]) || (m.time[a] - m.time[b]) || (Math.random() - .5));
+  m.winner = order[0]; m.done = true;
+}
+function koReveal() {
+  const g = H.game; if (g.phase !== "answer") return;
+  clearGame(); g.phase = "reveal";
+  g.roundMatches = g.matches.filter(m => !m.done);
+  for (const m of g.roundMatches) {
+    const per = {}; let best = null;
+    for (const id of m.ids) {
+      const a = g.ans[id], ok = !!(a && a.ok), ms = ok ? a.ms : Q_T*1000;
+      per[id] = {ok, ms}; m.time[id] += ms;
+      if (ok && (best === null || ms < per[best].ms)) best = id;
+    }
+    if (best) m.wins[best]++;
+    m.rounds++; m.last = {winner:best, per};
+    if (Math.max(...Object.values(m.wins)) >= 2 || m.rounds >= 3) decide(m);
+  }
+  const ans = BONES[g.bi].sci;
+  koSendAll(id => {
+    const m = g.roundMatches.find(x => x.ids.includes(id));
+    if (!m) return {phase:"ko_reveal", spectator:true, answer:ans, bi:g.bi};
+    const me = m.last.per[id], w = m.last.winner;
+    return {phase:"ko_reveal", answer:ans, bi:g.bi, ok:me.ok, ms:me.ms, youWon:w === id, winnerName:w ? nameOf(w) : null,
+      score:scoreFor(m, id), matchDone:m.done, matchWon:m.done && m.winner === id, cons:m.cons};
+  });
+  hostView();
+  gLater(koRound, REVEAL_T*1000);
+}
+function koStageEnd() {
+  const g = H.game;
+  g.matches.filter(m => !m.done).forEach(decide);
+  const winners = [], losers = [];
+  for (const m of g.matches.filter(m => !m.cons)) { winners.push(m.winner); losers.push(...m.ids.filter(x => x !== m.winner)); }
+  g.elimGroups.push(losers);
+  g.alive = winners; g.out.push(...losers);
+  g.phase = "result";
+  const champ = winners.filter(live).length <= 1;
+  koSendAll(id => {
+    if (winners.includes(id)) return {phase:"ko_result", good:true, title: champ ? "You won the final!" : "You advance!", text: champ ? "" : `${winners.length} players still in. Next battle coming up…`};
+    if (losers.includes(id)) return {phase:"ko_result", good:false, title:"Knocked out!", text: champ ? "" : "You'll keep battling the other knocked-out players."};
+    const m = matchOf(id);
+    if (m) return {phase:"ko_result", good:m.winner === id, title: m.winner === id ? "Bonus battle won!" : "Bonus battle lost", text:"Next stage coming up…"};
+    return {phase:"ko_result", good:true, title:"Next stage coming up…", text:""};
+  });
+  hostView();
+  gLater(koStage, RESULT_T*1000);
+}
+function koEnd() {
+  const g = H.game; g.phase = "end";
+  const places = {}; let place = 1;
+  if (g.alive[0]) places[g.alive[0]] = place++;
+  for (const grp of g.elimGroups.slice().reverse()) { grp.forEach(id => { if (!places[id]) places[id] = place; }); place += grp.length; }
+  g.places = places;
+  const n = Object.keys(places).length;
+  koSendAll(id => ({phase:"end", place:places[id] || n, of:n, line: places[id] === 1 ? "Undefeated champion 🏆" : ""}));
+  hostView();
+}
+
+/* ---------- Host (projector) screens ---------- */
+function matchCard(m, showRound) {
+  const rows = m.ids.map(id => {
+    const cls = m.done ? (m.winner === id ? "win" : "lose") : "";
+    const rw = showRound && m.last && m.last.winner === id ? `<span class="rw">+1</span>` : "";
+    const pips = `<div class="pips">${[0,1].map(k => `<span class="pip ${m.wins[id] > k ? "on" : ""}"></span>`).join("")}</div>`;
+    return `<div class="mp ${cls}"><span class="nm">${esc(nameOf(id))}</span>${rw}${pips}</div>`;
+  }).join("");
+  return `<div class="match ${m.cons ? "cons" : ""}">${m.cons ? `<div class="muted" style="font-size:12px;font-weight:600">BONUS</div>` : ""}${rows}</div>`;
+}
+function hostView() {
+  const g = H.game; if (!g) return hostLobby();
+  const b = BONES[g.bi];
+  if (g.type === "timed") {
+    const head = `<span class="pill hot">Q ${g.i+1} / ${g.qs.length}</span>`;
+    if (g.phase === "q") {
+      return view(`<div class="game">${hostTop(head + `<span class="pill" id="ansCount">${answeredText()}</span>` + clockEl(Q_T))}${barEl(Q_T)}
+        <div class="gbody">${skel({ptr:{i:g.bi, text:b.common}})}
+        <div class="gside"><div class="prompt" style="font-size:clamp(28px,4vw,48px)">What's the scientific name for the <em>${esc(b.common.toLowerCase())}</em>?</div>
+        ${g.choices ? `<div class="choices">${g.choices.map((c, i) => `<div class="ch c${i}"><span>${"ABCD"[i]}</span>${esc(c)}</div>`).join("")}</div>` : `<p class="muted" style="font-size:22px">Type your answer on your device!</p>`}
+        </div></div></div>`);
+    }
+    if (g.phase === "r") {
+      const rank = tRanking(), right = g.ids.filter(id => g.stats[id].last && g.stats[id].last.ok).length;
+      return view(`<div class="game">${hostTop(head)}
+        <div class="gbody">${skel({ptr:{i:g.bi, text:b.sci, kind:"good"}})}
+        <div class="gside"><div><div class="muted" style="font-size:20px">${esc(b.common)} =</div><div class="answerbig">${esc(b.sci)}</div>
+          <div class="muted" style="margin-top:6px">${right} of ${g.ids.length} got it</div></div>
+          ${g.choices ? `<div class="choices">${g.choices.map((c, i) => `<div class="ch c${i} ${norm(c) === norm(b.sci) ? "right" : "dim"}"><span>${"ABCD"[i]}</span>${esc(c)}</div>`).join("")}</div>` : ""}
+          <div class="board">${rank.slice(0, 5).map((id, i) => `<div class="brow"><span class="rk">${i+1}</span><span>${esc(nameOf(id))}</span><span>${secs(g.stats[id].total)}</span></div>`).join("")}</div>
+          <button class="btn yellow" data-act="hostNext">${g.i + 1 < g.qs.length ? "Next question ▶" : "Final results ▶"}</button>
+        </div></div></div>`);
+    }
+    if (g.phase === "end") {
+      const rank = tRanking();
+      return view(confetti() + endScreen(rank.map(id => ({id, sub:`${secs(g.stats[id].total)} · ${g.stats[id].correct}/${g.qs.length}`})), "Lowest total time wins"));
+    }
+  }
+  if (g.type === "ko") {
+    const head = `<span class="pill hot">${g.alive.length <= 3 && g.matches.some(m => !m.cons) && g.alive.length > 1 ? "FINAL" : "Stage " + g.stage}</span>${g.round ? `<span class="pill">Round ${g.round} of 3</span>` : ""}`;
+    const elim = g.matches.filter(m => !m.cons), cons = g.matches.filter(m => m.cons);
+    const cards = showRound => `<div class="matches">${elim.map(m => matchCard(m, showRound)).join("")}</div>
+      ${cons.length ? `<h3 class="muted" style="margin-top:6px">Bonus battles</h3><div class="matches">${cons.map(m => matchCard(m, showRound)).join("")}</div>` : ""}`;
+    if (g.phase === "stage") {
+      return view(`<div class="game">${hostTop(head)}
+        <div class="center"><h2 class="display" style="font-size:clamp(36px,6vw,72px)">${g.alive.length <= 3 ? "Final battle" : "Stage " + g.stage}</h2>
+        <p class="muted" style="font-size:22px;margin:6px 0 18px">${g.alive.length} still in · first to 2 round wins advances</p></div>${cards(false)}
+        ${g.resting.length ? `<p class="muted">Resting: ${g.resting.map(id => esc(nameOf(id))).join(", ")}</p>` : ""}</div>`);
+    }
+    if (g.phase === "show") {
+      return view(`<div class="game">${hostTop(head + clockEl(SHOW_T))}${barEl(SHOW_T)}
+        <div class="gbody">${skel({ptr:{i:g.bi, text:b.common}, cls:"fade5"})}
+        <div class="gside"><div class="prompt" style="font-size:clamp(30px,4.4vw,54px)">Memorize it!<br><em>${esc(b.common)}</em></div><p class="muted" style="font-size:20px">It disappears in 5 seconds…</p></div></div></div>`);
+    }
+    if (g.phase === "count") {
+      return view(`<div class="game">${hostTop(head)}<div class="bigmsg"><div class="bigcount" data-end="${endAt(COUNT_T)}" data-zero="GO">3</div></div></div>`);
+    }
+    if (g.phase === "answer") {
+      return view(`<div class="game">${hostTop(head + `<span class="pill" id="ansCount">${answeredText()}</span>` + clockEl(Q_T))}${barEl(Q_T)}
+        <div class="bigmsg" style="min-height:40vh"><h2>${SET().style === "mc" ? "Pick it!" : "Type it!"}</h2><p class="muted">What was the scientific name?</p></div></div>`);
+    }
+    if (g.phase === "reveal") {
+      return view(`<div class="game">${hostTop(head)}
+        <div class="gbody">${skel({ptr:{i:g.bi, text:b.sci, kind:"good"}})}
+        <div class="gside"><div><div class="muted" style="font-size:20px">${esc(b.common)} =</div><div class="answerbig">${esc(b.sci)}</div></div>${cards(true)}</div></div></div>`);
+    }
+    if (g.phase === "result") {
+      return view(`<div class="game">${hostTop(head)}<div class="center"><h2 class="display" style="font-size:clamp(34px,5vw,60px)">Stage ${g.stage} results</h2></div>${cards(false)}</div>`);
+    }
+    if (g.phase === "end") {
+      const outStage = {}; g.elimGroups.forEach((grp, i) => grp.forEach(id => outStage[id] = i + 1));
+      const order = Object.entries(g.places || {}).sort((a, b) => a[1] - b[1]).map(([id, pl]) => ({id, rank:pl, sub: pl === 1 ? "Champion" : `Out in stage ${outStage[id]}`}));
+      return view(confetti() + endScreen(order, "Last one standing"));
+    }
+  }
+}
+function endScreen(list, subtitle) {
+  const top = list.slice(0, 3), pod = [top[1], top[0], top[2]], cls = ["p2", "p1", "p3"], medal = ["2", "1", "3"];
+  return `${topbar(`<button class="btn small yellow" data-act="hostEnd">Back to lobby</button>`)}
+  <div class="center"><h2 class="display" style="font-size:clamp(38px,6vw,72px)">${list[0] ? esc(nameOf(list[0].id)) + " wins!" : "Game over"}</h2><p class="muted" style="font-size:20px;margin:4px 0">${subtitle}</p></div>
+  <div class="podium">${pod.map((x, i) => x ? `<div class="pod ${cls[i]}"><div class="pm">${x.rank || medal[i]}</div><div class="pn">${esc(nameOf(x.id))}</div><div style="font-size:14px;opacity:.85">${esc(x.sub)}</div></div>` : "").join("")}</div>
+  ${list.length > 3 ? `<div class="board" style="max-width:640px;margin:0 auto">${list.slice(3).map((x, i) => `<div class="brow"><span class="rk">${x.rank || i+4}</span><span>${esc(nameOf(x.id))}</span><span class="muted">${esc(x.sub)}</span></div>`).join("")}</div>` : ""}`;
+}
+
+/* ===================== PLAYER ===================== */
+let P = null;
+function joinScreen(err = "") {
+  leaveNet();
+  let saved = ""; try { saved = localStorage.getItem("bb-name") || ""; } catch (e) {}
+  view(`${topbar(`<button class="btn small ghost" data-act="home">Home</button>`)}
+  <form class="formcard card" data-form="join">
+    <h2 class="display center" style="font-size:36px">Join a game</h2>
+    ${err ? `<div class="err">${err}</div>` : ""}
+    <input class="codein" name="code" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" ${saved ? "autofocus" : ""}>
+    <input name="name" maxlength="16" placeholder="Your name" value="${esc(saved)}" autocomplete="off" ${saved ? "" : "autofocus"}>
+    <button class="btn primary big">Join</button>
+  </form>`);
+}
+FORM.join = f => {
+  const code = f.code.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const name = f.name.value.replace(/\s+/g, " ").trim().slice(0, 16);
+  if (code.length !== 5) return joinScreen("The code is 5 letters/numbers.");
+  if (!name) return joinScreen("Type your name so the class knows who you are.");
+  try { localStorage.setItem("bb-name", name); } catch (e) {}
+  leaveNet();
+  if (!peerReady()) return netError(NO_LIB);
+  view(`<div class="bigmsg"><h2>Joining…</h2><p class="muted">Code ${esc(code)}</p></div>`);
+  const peer = new Peer({debug:0});
+  NET.role = "player"; NET.peer = peer;
+  P = {peer, name, code, conn:null, view:null};
+  const me = P;
+  me.to = setTimeout(() => { if (P === me && !me.view) joinScreen("Couldn't reach that game. Double-check the code."); }, 15000);
+  peer.on("open", () => {
+    const conn = peer.connect(PREFIX + code, {reliable:true});
+    me.conn = conn;
+    conn.on("open", () => conn.send({t:"join", name}));
+    conn.on("data", d => { if (P === me) playerMsg(d); });
+    conn.on("close", () => { if (P === me) { clearTimeout(me.to); netGone(); } });
+    conn.on("error", () => {});
+  });
+  peer.on("error", e => {
+    if (P !== me) return;
+    clearTimeout(me.to);
+    if (e.type === "peer-unavailable") joinScreen(`No game found with code <b>${esc(code)}</b>.`);
+    else if (!me.view) joinScreen("Connection problem (" + esc(e.type) + "). Try again.");
+  });
+};
+function netGone() {
+  P = null;
+  view(`${topbar()}<div class="bigmsg"><h2>Disconnected</h2><p>The game ended or the connection dropped.</p><div class="row"><button class="btn primary" data-act="goJoin">Join again</button><button class="btn ghost" data-act="home">Home</button></div></div>`);
+}
+function playerMsg(d) {
+  if (!d || d.t !== "view") return;
+  clearTimeout(P.to);
+  P.view = d;
+  renderPlayer(d);
+}
+function pTop(extra = "") { return `<div class="gtop"><span class="pill">${esc(P.name)}</span>${extra}<div class="spacer"></div></div>`; }
+function bigmsg(title, text = "", cls = "") { return `${pTop()}<div class="bigmsg"><h2 class="${cls}">${title}</h2>${text ? `<p>${text}</p>` : ""}</div>`; }
+function koBadge(v) { return v.vs ? `<span class="pill ${v.cons ? "" : "hot"}">${v.cons ? "Bonus · " : ""}vs ${esc(v.vs)}</span><span class="pill">${esc(v.score || "")}</span>` : ""; }
+function renderPlayer(v) {
+  P.answered = false;
+  switch (v.phase) {
+    case "lobby":
+      P.name = v.name || P.name;
+      return view(bigmsg("You're in!", `Watch the big screen. ${v.count} player${v.count === 1 ? "" : "s"} in the lobby.`, "good-t"));
+    case "msg": return view(bigmsg(esc(v.title), esc(v.text)));
+    case "tq": {
+      P.qid = v.qid; P.t0 = performance.now();
+      const b = BONES[v.bi];
+      view(`<div class="game">${pTop(`<span class="pill hot">Q ${v.idx+1}/${v.total}</span>` + clockEl(v.dur))}${barEl(v.dur)}
+        <div class="gbody">${skel({ptr:{i:v.bi, text:b.common}})}<div class="gside"><div class="prompt">Scientific name for the <em>${esc(b.common.toLowerCase())}</em>?</div>${answerArea(v.choices)}</div></div></div>`);
+      return uiLater(() => { if (!P.answered) view(bigmsg("Time's up!", "Waiting for results…", "bad-t")); }, v.dur*1000);
+    }
+    case "treveal":
+      return view(`${pTop(`<span class="pill">#${v.rank} of ${v.of}</span>`)}<div class="bigmsg">
+        <h2 class="${v.ok ? "good-t" : "bad-t"}">${v.ok ? "Correct!" : "Nope"}</h2>
+        <p>${v.ok ? `+${secs(v.ms)}` : `+${secs(v.ms)} penalty`}</p>
+        <div class="answerbig">${esc(v.answer)}</div>
+        <p class="muted">Total time: ${secs(v.total)} · you're <b style="color:var(--ink)">#${v.rank}</b></p></div>`);
+    case "ko_stage": return view(bigmsg(esc(v.title), v.text, v.hot ? "yel-t" : ""));
+    case "ko_show": {
+      const b = BONES[v.bi];
+      return view(`<div class="game">${pTop(koBadge(v) + clockEl(v.dur))}${barEl(v.dur)}
+        ${v.spectator ? `<p class="muted center" style="margin:0">Your battle is decided — play along!</p>` : ""}
+        <div class="gbody">${skel({ptr:{i:v.bi, text:b.common}, cls:"fade5"})}<div class="gside"><div class="prompt">Memorize it: <em>${esc(b.common)}</em></div><p class="muted">It fades in 5 seconds…</p></div></div></div>`);
+    }
+    case "ko_count": return view(`${pTop()}<div class="bigmsg"><div class="bigcount" data-end="${endAt(v.dur)}" data-zero="GO">3</div></div>`);
+    case "ko_answer":
+      if (v.spectator) return view(bigmsg("Hang tight", "Other battles are answering…"));
+      P.qid = v.qid; P.t0 = performance.now();
+      view(`<div class="game">${pTop(koBadge(v) + clockEl(v.dur))}${barEl(v.dur)}
+        <div class="stack" style="max-width:720px;margin:4vh auto 0;width:100%"><div class="prompt center">What was the scientific name?</div>${answerArea(v.choices)}</div></div>`);
+      return uiLater(() => { if (!P.answered) view(bigmsg("Time's up!", "Waiting for the round result…", "bad-t")); }, v.dur*1000);
+    case "ko_reveal": {
+      if (v.spectator) return view(`${pTop()}<div class="bigmsg"><p class="muted">The answer was</p><div class="answerbig">${esc(v.answer)}</div></div>`);
+      const head = v.youWon ? `<h2 class="good-t">Round won!</h2>` : v.winnerName ? `<h2 class="bad-t">${esc(v.winnerName)} took it</h2>` : `<h2 class="muted">No one got it</h2>`;
+      const status = v.matchDone ? `<p class="${v.matchWon ? "good-t" : "bad-t"}" style="font-weight:800">${v.matchWon ? (v.cons ? "You won the bonus battle!" : "You win the battle!") : (v.cons ? "Bonus battle over" : "Battle lost")}</p>` : "";
+      return view(`${pTop(`<span class="pill">${esc(v.score)}</span>`)}<div class="bigmsg">${head}
+        <p class="muted">${v.ok ? `You got it in ${secs(v.ms)}` : "You missed this one"}</p>
+        <div class="answerbig">${esc(v.answer)}</div><p class="muted">Score: <b style="color:var(--ink)">${esc(v.score)}</b></p>${status}</div>`);
+    }
+    case "ko_result": return view(bigmsg(esc(v.title), esc(v.text), v.good ? "good-t" : "bad-t"));
+    case "end": {
+      const medal = {1:"🏆", 2:"🥈", 3:"🥉"}[v.place] || "";
+      return view((v.place === 1 ? confetti() : "") + bigmsg(`${medal} #${v.place}`, `out of ${v.of}${v.line ? "<br>" + esc(v.line) : ""}<br><span class="muted">Waiting for the next game…</span>`, v.place === 1 ? "yel-t" : ""));
+    }
+  }
+}
+function playerSubmit(v) {
+  if (!P || !P.view || P.answered || !P.conn) return;
+  const ph = P.view.phase;
+  if (ph !== "tq" && ph !== "ko_answer") return;
+  P.answered = true;
+  const ms = performance.now() - P.t0;
+  try { P.conn.send({t:"ans", qid:P.qid, v, ms}); } catch (e) {}
+  view(bigmsg("Locked in!", `${esc(v)}<br><span class="muted">${secs(ms)} — wait for the reveal…</span>`, "yel-t"));
+}
+
+home();
+</script>
+</body>
+</html>
